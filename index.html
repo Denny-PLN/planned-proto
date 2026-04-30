@@ -321,7 +321,7 @@ button { font-family: inherit; }
 .sc-title { font: 500 13.5px/1.2 var(--font-sans); color: var(--foreground); letter-spacing: -0.005em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sc-feed { flex: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 18px; }
 .sc-feed .msg { display: flex; gap: 10px; }
-.sc-feed .msg.user { flex-direction: row-reverse; }
+.sc-feed .msg.user { justify-content: flex-end; }
 .sc-feed .msg .av { width: 22px; height: 22px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--muted); display: inline-flex; align-items: center; justify-content: center; }
 .sc-feed .msg .av img { width: 100%; height: 100%; object-fit: cover; }
 .sc-feed .msg .col { display: flex; flex-direction: column; gap: 6px; min-width: 0; max-width: 100%; }
@@ -4285,7 +4285,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 10px 8px;
+  padding: 6px 8px 8px;
   gap: 4px;
   background: transparent;
   color: var(--sidebar-foreground);
@@ -4293,7 +4293,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   overflow: hidden;
   transition: width .28s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.sb-root[data-collapsed="true"] { padding: 10px 8px; }
+.sb-root[data-collapsed="true"] { padding: 6px 8px 8px; }
 
 /* Header */
 .sb-header { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; padding: 0 0 4px; }
@@ -4508,7 +4508,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 }
 .sb-user:hover { background: var(--sidebar-accent); }
 .sb-user-avatar {
-  width: 32px; height: 32px; border-radius: 8px;
+  width: 32px; height: 32px; border-radius: 50%;
   background: var(--decorative-champagne-600);
   color: #fff;
   display: inline-flex; align-items: center; justify-content: center;
@@ -15223,7 +15223,7 @@ function SideChatPane({ chat, onClose, onToggleSidebar }) {
         <div className="msg user">
           <div className="col" style={{ alignItems: 'flex-end' }}>
             <div className="hdr"><span>{now}</span> <span className="name">Denny Lavacca</span>
-              <span className="av"><img src="assets/denny.webp" alt="" onError={(e) => {e.target.style.display = 'none';}} /></span>
+              <span className="av" style={{ background: 'var(--decorative-champagne-600)', color: '#fff', font: '500 10px/1 var(--font-sans)' }}>DL</span>
             </div>
             <div className="bubble">Tell me more about: {title.charAt(0).toLowerCase() + title.slice(1)}</div>
           </div>
