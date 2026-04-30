@@ -3216,26 +3216,11 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   align-items: stretch;
   border-bottom: 1px solid var(--border);
 }
-.u-adopt-head-meta {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  padding: 18px 22px;
-}
-.u-adopt-title {
-  font: 500 15px/1.2 var(--font-sans);
-  color: var(--foreground);
-  letter-spacing: -0.01em;
-}
-.u-adopt-desc {
-  font: 400 12.5px/1.3 var(--font-sans);
-  color: var(--muted-foreground);
-}
 .u-adopt-tabs {
   display: flex;
+  flex: 1;
 }
+.u-adopt-tab:first-child { border-left: 0; }
 .u-adopt-tab {
   position: relative;
   display: flex;
@@ -3494,7 +3479,6 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   display: grid;
   grid-template-columns: 1fr 1fr 2fr;
   gap: 12px;
-  padding: 0 18px;
 }
 .ev-kpi {
   background: #fff;
@@ -3574,7 +3558,6 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
-  padding: 0 18px;
 }
 .inv-kpi {
   display: flex;
@@ -12433,10 +12416,6 @@ function AdoptionChart() {
   return (
     <section className="d-card u-adopt-card">
       <div className="u-adopt-head">
-        <div className="u-adopt-head-meta">
-          <div className="u-adopt-title">Activity</div>
-          <div className="u-adopt-desc">Daily activity for the last 3 months</div>
-        </div>
         <div className="u-adopt-tabs">
           {Object.keys(USR_CHART_CONFIG).map((key) => {
             const cfg = USR_CHART_CONFIG[key];
