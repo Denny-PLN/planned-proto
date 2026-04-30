@@ -8906,7 +8906,7 @@ function Topbar({ section, onToggleSidebar, right, showSidebarToggle = true, min
   crumbs = adminCrumb(section.charAt(0).toUpperCase() + section.slice(1));
 
   return (
-    <div className="topbar" style={{ padding: "0px 8px 0px 8px" }}>
+    <div className="topbar" style={{ padding: `0px 8px 0px ${showSidebarToggle ? '8px' : '18px'}` }}>
       <div className="tb-left">
         {showSidebarToggle &&
         <button className="icon-btn" onClick={onToggleSidebar} title={minimizeMode ? 'Minimize page' : 'Toggle sidebar'}>
