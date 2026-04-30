@@ -4,7 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=1280">
   <title>Planned</title>
-  <style>
+  
+  
+  
+  
+<style>
 /* ==========================================================================
    Planned Design System — Tokens
    Source: packages/ui/src/styles/globals.css (@planned/ui)
@@ -244,8 +248,7 @@ code, pre, kbd {
   font-size: 0.875em;
 }
 
-</style>
-  <style>
+@import url('colors_and_type.css');
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -4274,8 +4277,6 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   color: var(--muted-foreground);
 }
 
-</style>
-  <style>
 /* ========================================================================
    Sidebar — shadcn sidebar-08 inset variant (design-system spec)
    Replaces the legacy `.sidebar` / `.nav-item` rules.
@@ -4293,7 +4294,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   overflow: hidden;
   transition: width .28s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.sb-root[data-collapsed="true"] { padding: 6px 8px; }
+.sb-root[data-state="collapsed"] { padding: 6px 8px; }
 
 /* Header */
 .sb-header { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; padding: 0 0 4px; }
@@ -4302,10 +4303,10 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 .sb-mi-icon {
   justify-content: flex-start;
 }
-.sb-root[data-collapsed="false"] .sb-mi-icon { padding-left: 10px; }
+.sb-root[data-state="expanded"] .sb-mi-icon { padding-left: 10px; }
 /* Collapsed-state toggle pill: only the FIRST header button is the outline pill;
    any subsequent header buttons (e.g. AI chat) match regular nav items. */
-.sb-root[data-collapsed="true"] .sb-header .sb-mi-icon:first-child {
+.sb-root[data-state="collapsed"] .sb-header [data-slot="sidebar-trigger"] {
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -4314,11 +4315,13 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   display: inline-flex; align-items: center; justify-content: center;
   margin: 0 auto 4px;
   box-shadow: 0 1px 2px oklch(0.145 0 0 / 0.04);
+  grid-template-columns: 1fr;
+  justify-items: center;
 }
-.sb-root[data-collapsed="true"] .sb-header .sb-mi-icon:first-child:hover {
+.sb-root[data-state="collapsed"] .sb-header [data-slot="sidebar-trigger"]:hover {
   background: var(--muted);
 }
-.sb-root[data-collapsed="true"] .sb-header .sb-mi-icon:first-child > svg { opacity: .85; }
+.sb-root[data-state="collapsed"] .sb-header [data-slot="sidebar-trigger"] > svg { opacity: .85; }
 
 /* Legacy team-switcher kept (unused now but harmless) */
 .sb-team {
@@ -4520,23 +4523,57 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 .sb-user-name { font: 500 13px/1.2 var(--font-sans); color: var(--sidebar-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sb-user-email { font: 400 11px/1.3 var(--font-sans); color: var(--sidebar-foreground); opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Collapsed rail */
-.sb-root[data-collapsed="true"] .sb-team-meta,
-.sb-root[data-collapsed="true"] .sb-team-chev,
-.sb-root[data-collapsed="true"] .sb-mi-text,
-.sb-root[data-collapsed="true"] .sb-mi-action,
-.sb-root[data-collapsed="true"] .sb-mi-time,
-.sb-root[data-collapsed="true"] .sb-pill,
-.sb-root[data-collapsed="true"] .sb-badge-new,
-.sb-root[data-collapsed="true"] .sb-user-meta,
-.sb-root[data-collapsed="true"] .sb-label,
-.sb-root[data-collapsed="true"] .sb-mode-menu { display: none !important; }
-.sb-root[data-collapsed="true"] .sb-team,
-.sb-root[data-collapsed="true"] .sb-user {
+/* SidebarMenu / SidebarMenuItem — shadcn list resets */
+.sb-menu { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1px; }
+.sb-menu-item { list-style: none; padding: 0; margin: 0; display: block; }
+
+/* SidebarRail — thin interactive strip on right edge, reveals on hover */
+.sb-root {
+  position: relative;
+}
+.sb-rail {
+  position: absolute;
+  top: 0; bottom: 0; right: 0;
+  width: 6px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: col-resize;
+  z-index: 10;
+  transition: background .15s ease;
+}
+.sb-rail::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  background: transparent;
+  transition: background .15s ease;
+  border-radius: 1px;
+}
+.sb-rail:hover::after { background: var(--border); }
+.sb-root[data-state="collapsed"] .sb-rail { cursor: e-resize; }
+.sb-root[data-state="expanded"] .sb-rail { cursor: w-resize; }
+
+/* Collapsed icon-rail state */
+.sb-root[data-state="collapsed"] .sb-team-meta,
+.sb-root[data-state="collapsed"] .sb-team-chev,
+.sb-root[data-state="collapsed"] .sb-mi-text,
+.sb-root[data-state="collapsed"] .sb-mi-action,
+.sb-root[data-state="collapsed"] .sb-mi-time,
+.sb-root[data-state="collapsed"] .sb-pill,
+.sb-root[data-state="collapsed"] .sb-badge-new,
+.sb-root[data-state="collapsed"] .sb-user-meta,
+.sb-root[data-state="collapsed"] .sb-label,
+.sb-root[data-state="collapsed"] .sb-mode-menu { display: none !important; }
+.sb-root[data-state="collapsed"] .sb-team,
+.sb-root[data-state="collapsed"] .sb-user {
   grid-template-columns: 32px;
   justify-content: center;
 }
-.sb-root[data-collapsed="true"] .sb-mi {
+.sb-root[data-state="collapsed"] .sb-mi {
   grid-template-columns: 1fr;
   justify-items: center;
   padding: 7px 0;
@@ -4544,13 +4581,13 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   height: 32px;
   margin: 1px 0;
 }
-.sb-root[data-collapsed="true"] .sb-content { overflow-x: hidden; }
-.sb-root[data-collapsed="true"] .sb-team {
+.sb-root[data-state="collapsed"] .sb-content { overflow-x: hidden; }
+.sb-root[data-state="collapsed"] .sb-team {
   grid-template-columns: 1fr;
   justify-items: center;
   padding: 6px 0;
 }
-.sb-root[data-collapsed="true"] .sb-user {
+.sb-root[data-state="collapsed"] .sb-user {
   grid-template-columns: 1fr;
   justify-items: center;
   padding: 6px 0;
@@ -5645,8 +5682,6 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 }
 .sc-card-footer .sc-range-pills { margin-right: 0; }
 
-</style>
-  <style>
 /* ==========================================================================
    shadcn primitives — pure default look
    Mirrors the Tailwind output of @planned/ui (which is shadcn defaults).
@@ -7209,7 +7244,7 @@ window.DATA = {
   },
 };
 
-</script>
+</script></script>
   <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.min.js"></script>
   <script type="text/babel">
@@ -7331,13 +7366,13 @@ I.verifiedSolid = ({ size = 14, className = '', style = {} } = {}) =>
   );
 
 window.I = I;
-</script>
+</script></script>
   <script type="text/babel">
 // ==========================================================================
 // shadcn primitive wrappers — React 18, no JSX runtime, no TypeScript.
 // Each component renders the same data-slot attributes the @planned/ui
 // components emit, so shadcn.css can style them identically.
-// Loaded via <script type="text/babel" src="shadcn.jsx"><\/script>
+// Loaded via <script type="text/babel" src="shadcn.jsx"></script>
 // ==========================================================================
 
 const { useState: useStateSc, useRef: useRefSc, useEffect: useEffectSc, useId: useIdSc } = React;
@@ -7884,7 +7919,7 @@ Object.assign(window, {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuGroup,
 });
 
-</script>
+</script></script>
   <script type="text/babel">
 // Liveline — live-animated line chart, canvas-based, 60fps lerp.
 // Inspired by benji.org/liveline. Faked live ticks for demo realism.
@@ -8255,7 +8290,7 @@ function LivelineWindows({ windows, active, onChange, variant = 'rounded' }) {
 window.Liveline = Liveline;
 window.LivelineWindows = LivelineWindows;
 
-</script>
+</script></script>
   <script type="text/babel">
 // ShadcnChart — shadcn/ui "chart-line-interactive" port.
 // Header strip with metric pill buttons (total + label, active highlight),
@@ -8431,18 +8466,111 @@ function ShadcnChart({
 
 window.ShadcnChart = ShadcnChart;
 
-</script>
+</script></script>
   <script type="text/babel">
-// Sidebar — shadcn sidebar-08 inset variant (design-system spec)
-// TeamSwitcher header → grouped nav (Platform / Active events / Secondary) → NavUser footer.
+// Sidebar — shadcn sidebar-08 inset variant
+// Sub-components: SidebarHeader, SidebarContent, SidebarGroup, SidebarGroupLabel,
+//   SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarRail, SidebarTrigger
+// useSidebar hook via _SbCtx context
+
+const _SbCtx = React.createContext(null);
+function useSidebar() { return React.useContext(_SbCtx); }
+
+function SidebarTrigger({ className }) {
+  const { toggle } = useSidebar();
+  return (
+    <button
+      data-slot="sidebar-trigger"
+      className={['sb-mi sb-mi-icon', className].filter(Boolean).join(' ')}
+      onClick={toggle}
+      aria-label="Toggle sidebar"
+      title="Toggle sidebar"
+    >
+      <I.sidebar size={16} />
+    </button>
+  );
+}
+
+function SidebarHeader({ children, className }) {
+  return (
+    <div data-slot="sidebar-header" className={['sb-header', className].filter(Boolean).join(' ')}>
+      {children}
+    </div>
+  );
+}
+
+function SidebarContent({ children, className }) {
+  return (
+    <div data-slot="sidebar-content" className={['sb-content', className].filter(Boolean).join(' ')}>
+      {children}
+    </div>
+  );
+}
+
+function SidebarFooter({ children, className }) {
+  return (
+    <footer data-slot="sidebar-footer" className={['sb-footer', className].filter(Boolean).join(' ')}>
+      {children}
+    </footer>
+  );
+}
+
+function SidebarGroup({ children, className }) {
+  return (
+    <div data-slot="sidebar-group" className={['sb-group', className].filter(Boolean).join(' ')}>
+      {children}
+    </div>
+  );
+}
+
+function SidebarGroupLabel({ children }) {
+  return <div data-slot="sidebar-group-label" className="sb-label">{children}</div>;
+}
+
+function SidebarMenu({ children }) {
+  return <ul data-slot="sidebar-menu" className="sb-menu">{children}</ul>;
+}
+
+function SidebarMenuItem({ children }) {
+  return <li data-slot="sidebar-menu-item" className="sb-menu-item">{children}</li>;
+}
+
+function SidebarMenuButton({ isActive, onClick, title, className, children }) {
+  const cls = ['sb-mi', isActive && 'active', className].filter(Boolean).join(' ');
+  return (
+    <button
+      data-slot="sidebar-menu-button"
+      data-active={isActive ? 'true' : undefined}
+      className={cls}
+      onClick={onClick}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SidebarRail() {
+  const { toggle } = useSidebar();
+  return (
+    <button
+      data-slot="sidebar-rail"
+      className="sb-rail"
+      aria-label="Toggle Sidebar"
+      tabIndex={-1}
+      onClick={toggle}
+    />
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function Sidebar({ mode, setMode, section, setSection, collapsed, onToggle, focusMode, onToggleFocus, pastChats, onOpenAIChat }) {
-  const isHome = mode === 'home';
+  const isHome   = mode === 'home';
   const isPortal = mode === 'portal';
-  const isAdmin = mode === 'admin';
+  const isAdmin  = mode === 'admin';
   const [modeMenu, setModeMenu] = React.useState(false);
 
-  // Close dropdown on outside click / esc
   React.useEffect(() => {
     if (!modeMenu) return;
     const close = (e) => {
@@ -8460,225 +8588,256 @@ function Sidebar({ mode, setMode, section, setSection, collapsed, onToggle, focu
 
   const modeLabel = mode === 'home' ? 'Planner' : mode === 'portal' ? 'Portal' : 'Admin';
   const modeOptions = [
-  { id: 'home', label: 'Home', sub: 'Plan and run events', icon: I.home },
-  { id: 'portal', label: 'Portal', sub: 'Request events and services', icon: I.grid2 },
-  { id: 'admin', label: 'Admin', sub: 'Program controls and insights', icon: I.shield }];
-
+    { id: 'home',   label: 'Home',   sub: 'Plan and run events',           icon: I.home   },
+    { id: 'portal', label: 'Portal', sub: 'Request events and services',   icon: I.grid2  },
+    { id: 'admin',  label: 'Admin',  sub: 'Program controls and insights', icon: I.shield },
+  ];
 
   const platformHome = [
-  { id: 'home-events', label: 'Home', icon: I.home, pill: '6' },
-  { id: 'home-routines', label: 'Routines', icon: I.bolt },
-  { id: 'home-inbox', label: 'Inbox', icon: I.inbox, pill: '12' },
-  { id: 'home-suppliers', label: 'Suppliers', icon: I.users },
-  { id: 'home-marketplace', label: 'Marketplace', icon: I.grid2 }];
-
+    { id: 'home-events',      label: 'Home',        icon: I.home,  pill: '6'  },
+    { id: 'home-routines',    label: 'Routines',    icon: I.bolt              },
+    { id: 'home-inbox',       label: 'Inbox',       icon: I.inbox, pill: '12' },
+    { id: 'home-suppliers',   label: 'Suppliers',   icon: I.users             },
+    { id: 'home-marketplace', label: 'Marketplace', icon: I.grid2             },
+  ];
   const platformAdmin = [
-  { id: 'dashboard', label: 'Dashboard', icon: I.home },
-  { id: 'users', label: 'Users', icon: I.user },
-  { id: 'insights', label: 'Insights', icon: I.chart },
-  { id: 'policies', label: 'Policies', icon: I.shield },
-  { id: 'events', label: 'Events', icon: I.calendar },
-  { id: 'invoices', label: 'Invoices', icon: I.file },
-  { id: 'contracts', label: 'Contracts', icon: I.signature },
-  { id: 'approvals', label: 'Approvals', icon: I.check },
-  { id: 'taskreporting', label: 'Task reporting', icon: I.tasks },
-  { id: 'preferred', label: 'Preferred', icon: I.star },
-  { id: 'intakeforms', label: 'Intake forms', icon: I.feed },
-  { id: 'settings', label: 'Company settings', icon: I.settings }];
-
+    { id: 'dashboard',     label: 'Dashboard',       icon: I.home      },
+    { id: 'users',         label: 'Users',            icon: I.user      },
+    { id: 'insights',      label: 'Insights',         icon: I.chart     },
+    { id: 'policies',      label: 'Policies',         icon: I.shield    },
+    { id: 'events',        label: 'Events',           icon: I.calendar  },
+    { id: 'invoices',      label: 'Invoices',         icon: I.file      },
+    { id: 'contracts',     label: 'Contracts',        icon: I.signature },
+    { id: 'approvals',     label: 'Approvals',        icon: I.check     },
+    { id: 'taskreporting', label: 'Task reporting',   icon: I.tasks     },
+    { id: 'preferred',     label: 'Preferred',        icon: I.star      },
+    { id: 'intakeforms',   label: 'Intake forms',     icon: I.feed      },
+    { id: 'settings',      label: 'Company settings', icon: I.settings  },
+  ];
   const internalSpacesAdmin = [
-  { id: 'offices', label: 'Offices', icon: I.building },
-  { id: 'spaces', label: 'Spaces', icon: I.grid2 },
-  { id: 'requests', label: 'Requests', icon: I.feed }];
-
+    { id: 'offices',  label: 'Offices',  icon: I.building },
+    { id: 'spaces',   label: 'Spaces',   icon: I.grid2    },
+    { id: 'requests', label: 'Requests', icon: I.feed     },
+  ];
   const platformPortal = [
-  { id: 'portal-home', label: 'Home', icon: I.home },
-  { id: 'portal-requests', label: 'My requests', icon: I.calendar, pill: '2' },
-  { id: 'portal-new-request', label: 'New request', icon: I.plus },
-  { id: 'portal-catalog', label: 'Service catalog', icon: I.grid2 },
-  { id: 'portal-help', label: 'Help & guides', icon: I.help }];
+    { id: 'portal-home',        label: 'Home',            icon: I.home             },
+    { id: 'portal-requests',    label: 'My requests',     icon: I.calendar, pill: '2' },
+    { id: 'portal-new-request', label: 'New request',     icon: I.plus             },
+    { id: 'portal-catalog',     label: 'Service catalog', icon: I.grid2            },
+    { id: 'portal-help',        label: 'Help & guides',   icon: I.help             },
+  ];
 
   const platform = isHome ? platformHome : isPortal ? platformPortal : platformAdmin;
 
-  // "Active events" group — only on Home
   const activeEvents = isHome ? [
-  { id: 'evt-summit', label: 'Summer Design Summit' },
-  { id: 'evt-q2', label: 'Q2 Partner Offsite' },
-  { id: 'evt-dinner', label: 'Board Dinner — April' }] :
-  null;
+    { id: 'evt-summit', label: 'Summer Design Summit' },
+    { id: 'evt-q2',     label: 'Q2 Partner Offsite'   },
+    { id: 'evt-dinner', label: 'Board Dinner — April'  },
+  ] : null;
 
-  // AI / agent group — only on Home
   const aiGroup = isHome ? [
-  { id: 'home-agent', label: 'My agent', icon: I.sparkle, badge: 'NEW' }] :
-  null;
+    { id: 'home-agent', label: 'My agent', icon: I.sparkle, badge: 'NEW' },
+  ] : null;
+
+  const state = collapsed ? 'collapsed' : 'expanded';
 
   return (
-    <aside className="sb-root" data-collapsed={collapsed ? 'true' : 'false'} style={{ width: collapsed ? "56px" : "248px" }}>
-      {/* ===== Header ===== */}
-      <header className="sb-header">
-        {collapsed ? (
-        /* Collapsed: toggle pill + AI chat icon */
-        <>
-            <button className="sb-mi sb-mi-icon" onClick={onToggle}
-          aria-label="Expand sidebar" title="Expand sidebar">
-              <I.sidebar size={16} />
-            </button>
-            {onOpenAIChat &&
-          <button className="sb-mi sb-mi-icon" onClick={onOpenAIChat}
-          aria-label="Open AI chat" title="Open AI chat">
-                <I.sparkle size={16} />
-              </button>
-          }
-          </>) :
-
-        <>
-            {/* Expanded: logo + team/mode switcher */}
-            <div className="sb-team-wrap">
-              <button className="sb-team" onClick={() => setModeMenu((m) => !m)} aria-haspopup="menu" aria-expanded={modeMenu}>
-                <span className="sb-team-logo">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z" /><path d="M3 12l9 4 9-4" /><path d="M3 17l9 4 9-4" /></svg>
-                </span>
-                <span className="sb-team-meta">
-                  <span className="sb-team-name">Acme Events</span>
-                  <span className="sb-team-plan">{modeLabel}</span>
-                </span>
-                <span className="sb-team-chev" aria-hidden="true">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7 15 5 5 5-5" /><path d="m7 9 5-5 5 5" /></svg>
-                </span>
-              </button>
-              {modeMenu &&
-            <div className="sb-mode-menu" role="menu">
-                  <div className="sb-mode-menu-label">Modes</div>
-                  {modeOptions.map((opt) =>
-              <button key={opt.id} className={`sb-mode-menu-item ${mode === opt.id ? 'active' : ''}`}
-              role="menuitemradio" aria-checked={mode === opt.id}
-              onClick={() => {setMode(opt.id);setModeMenu(false);}}>
-                      <span className="sb-mode-menu-ico"><opt.icon size={14} /></span>
-                      <span className="sb-mode-menu-txt">
-                        <span className="sb-mode-menu-name">{opt.label}</span>
-                        <span className="sb-mode-menu-sub">{opt.sub}</span>
-                      </span>
-                      {mode === opt.id && <span className="sb-mode-menu-check"><I.check size={13} /></span>}
-                    </button>
+    <_SbCtx.Provider value={{ toggle: onToggle, state }}>
+      <aside
+        data-slot="sidebar"
+        data-state={state}
+        data-collapsible="icon"
+        data-side="left"
+        data-variant="inset"
+        className="sb-root"
+        style={{
+          '--sidebar-width': '248px',
+          '--sidebar-width-icon': '56px',
+          width: collapsed ? '56px' : '248px',
+        }}
+      >
+        {/* ── Header ── */}
+        <SidebarHeader>
+          {collapsed ? (
+            <SidebarTrigger />
+          ) : (
+            <>
+              <div className="sb-team-wrap">
+                <button className="sb-team" onClick={() => setModeMenu(m => !m)}
+                  aria-haspopup="menu" aria-expanded={modeMenu}>
+                  <span className="sb-team-logo">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 7l9-4 9 4-9 4-9-4z" /><path d="M3 12l9 4 9-4" /><path d="M3 17l9 4 9-4" />
+                    </svg>
+                  </span>
+                  <span className="sb-team-meta">
+                    <span className="sb-team-name">Acme Events</span>
+                    <span className="sb-team-plan">{modeLabel}</span>
+                  </span>
+                  <span className="sb-team-chev" aria-hidden="true">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m7 15 5 5 5-5" /><path d="m7 9 5-5 5 5" />
+                    </svg>
+                  </span>
+                </button>
+                {modeMenu && (
+                  <div className="sb-mode-menu" role="menu">
+                    <div className="sb-mode-menu-label">Modes</div>
+                    {modeOptions.map(opt => (
+                      <button key={opt.id}
+                        className={`sb-mode-menu-item${mode === opt.id ? ' active' : ''}`}
+                        role="menuitemradio" aria-checked={mode === opt.id}
+                        onClick={() => { setMode(opt.id); setModeMenu(false); }}>
+                        <span className="sb-mode-menu-ico"><opt.icon size={14} /></span>
+                        <span className="sb-mode-menu-txt">
+                          <span className="sb-mode-menu-name">{opt.label}</span>
+                          <span className="sb-mode-menu-sub">{opt.sub}</span>
+                        </span>
+                        {mode === opt.id && <span className="sb-mode-menu-check"><I.check size={13} /></span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {onOpenAIChat && (
+                <button className="sb-mi" onClick={onOpenAIChat}
+                  aria-label="Open AI chat" title="Open AI chat">
+                  <I.sparkle size={16} />
+                  <span className="sb-mi-text">AI chat</span>
+                </button>
               )}
-                </div>
-            }
-            </div>
-            {/* AI chat shortcut with label */}
-            {onOpenAIChat &&
-          <button className="sb-mi" onClick={onOpenAIChat}
-          aria-label="Open AI chat" title="Open AI chat">
-                <I.sparkle size={16} />
-                <span className="sb-mi-text">AI chat</span>
-              </button>
-          }
-          </>
-        }
-      </header>
-
-      {/* ===== Content ===== */}
-      <div className="sb-content">
-        {/* Platform */}
-        <nav className="sb-group">
-          <div className="sb-label">Platform</div>
-          {platform.map((item) =>
-          <button key={item.id}
-          className={`sb-mi ${section === item.id ? 'active' : ''}`}
-          onClick={() => setSection(item.id)}
-          title={item.label}>
-              <item.icon size={16} />
-              <span className="sb-mi-text">{item.label}</span>
-              {item.pill && <span className="sb-pill">{item.pill}</span>}
-            </button>
+            </>
           )}
-        </nav>
+        </SidebarHeader>
 
-        {/* Internal spaces — Admin only */}
-        {isAdmin &&
-        <nav className="sb-group">
-            <div className="sb-label">Internal spaces</div>
-            {internalSpacesAdmin.map((item) =>
-          <button key={item.id}
-          className={`sb-mi ${section === item.id ? 'active' : ''}`}
-          onClick={() => setSection(item.id)}
-          title={item.label}>
-                <item.icon size={16} />
-                <span className="sb-mi-text">{item.label}</span>
-              </button>
+        {/* ── Content ── */}
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Platform</SidebarGroupLabel>
+            <SidebarMenu>
+              {platform.map(item => (
+                <SidebarMenuItem key={item.id}>
+                  <SidebarMenuButton
+                    isActive={section === item.id}
+                    onClick={() => setSection(item.id)}
+                    title={item.label}
+                  >
+                    <item.icon size={16} />
+                    <span className="sb-mi-text">{item.label}</span>
+                    {item.pill && <span className="sb-pill">{item.pill}</span>}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+
+          {isAdmin && (
+            <SidebarGroup>
+              <SidebarGroupLabel>Internal spaces</SidebarGroupLabel>
+              <SidebarMenu>
+                {internalSpacesAdmin.map(item => (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      isActive={section === item.id}
+                      onClick={() => setSection(item.id)}
+                      title={item.label}
+                    >
+                      <item.icon size={16} />
+                      <span className="sb-mi-text">{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
           )}
-          </nav>
-        }
 
-        {/* Active events (NavProjects) — Home only */}
-        {activeEvents &&
-        <nav className="sb-group">
-            <div className="sb-label">Active events</div>
-            {activeEvents.map((item) =>
-          <button key={item.id} className="sb-mi muted" title={item.label}>
-                <I.calendar size={16} />
-                <span className="sb-mi-text">{item.label}</span>
-                <span className="sb-mi-action"><I.more size={13} /></span>
-              </button>
+          {activeEvents && (
+            <SidebarGroup>
+              <SidebarGroupLabel>Active events</SidebarGroupLabel>
+              <SidebarMenu>
+                {activeEvents.map(item => (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton className="muted" title={item.label}>
+                      <I.calendar size={16} />
+                      <span className="sb-mi-text">{item.label}</span>
+                      <span className="sb-mi-action"><I.more size={13} /></span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+                <SidebarMenuItem>
+                  <SidebarMenuButton className="muted" title="More">
+                    <I.more size={16} />
+                    <span className="sb-mi-text">More</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroup>
           )}
-            <button className="sb-mi muted" title="More">
-              <I.more size={16} />
-              <span className="sb-mi-text">More</span>
-            </button>
-          </nav>
-        }
 
-        {/* AI group */}
-        {aiGroup &&
-        <nav className="sb-group">
-            <div className="sb-label">AI</div>
-            {aiGroup.map((item) =>
-          <button key={item.id}
-          className={`sb-mi ${section === item.id ? 'active' : ''}`}
-          onClick={() => setSection(item.id)}
-          title={item.label}>
-                <item.icon size={16} />
-                <span className="sb-mi-text">{item.label}</span>
-                {item.badge && <span className="sb-badge-new">{item.badge}</span>}
-              </button>
+          {aiGroup && (
+            <SidebarGroup>
+              <SidebarGroupLabel>AI</SidebarGroupLabel>
+              <SidebarMenu>
+                {aiGroup.map(item => (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      isActive={section === item.id}
+                      onClick={() => setSection(item.id)}
+                      title={item.label}
+                    >
+                      <item.icon size={16} />
+                      <span className="sb-mi-text">{item.label}</span>
+                      {item.badge && <span className="sb-badge-new">{item.badge}</span>}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
           )}
-          </nav>
-        }
 
-        {/* Recent chats — Admin only */}
-        {!isHome && pastChats && pastChats.length > 0 &&
-        <nav className="sb-group">
-            <div className="sb-label">Recent chats</div>
-            {pastChats.slice(0, 5).map((c) =>
-          <button key={c.id} className={`sb-mi muted ${c.active ? 'active' : ''}`} title={c.label}>
-                <I.chat size={16} />
-                <span className="sb-mi-text">{c.label}</span>
-                <span className="sb-mi-time">{c.time}</span>
-              </button>
+          {!isHome && pastChats && pastChats.length > 0 && (
+            <SidebarGroup>
+              <SidebarGroupLabel>Recent chats</SidebarGroupLabel>
+              <SidebarMenu>
+                {pastChats.slice(0, 5).map(c => (
+                  <SidebarMenuItem key={c.id}>
+                    <SidebarMenuButton isActive={c.active} className="muted" title={c.label}>
+                      <I.chat size={16} />
+                      <span className="sb-mi-text">{c.label}</span>
+                      <span className="sb-mi-time">{c.time}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
           )}
-          </nav>
-        }
-      </div>
+        </SidebarContent>
 
-      {/* ===== Footer: NavUser ===== */}
-      <footer className="sb-footer">
-        <button className="sb-user" aria-label="Account menu">
-          <span className="sb-user-avatar">
-            {isHome ? 'ES' : 'DL'}
-          </span>
-          <span className="sb-user-meta">
-            <span className="sb-user-name">{isHome ? 'Ellie Smith' : 'Denny Lavacca'}</span>
-            <span className="sb-user-email">{isHome ? 'ellie@acme.events' : 'denny@acme.events'}</span>
-          </span>
-          <span className="sb-team-chev" aria-hidden="true">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7 15 5 5 5-5" /><path d="m7 9 5-5 5 5" /></svg>
-          </span>
-        </button>
-      </footer>
-    </aside>);
+        {/* ── Footer: NavUser ── */}
+        <SidebarFooter>
+          <button className="sb-user" aria-label="Account menu">
+            <span className="sb-user-avatar">{isHome ? 'ES' : 'DL'}</span>
+            <span className="sb-user-meta">
+              <span className="sb-user-name">{isHome ? 'Ellie Smith' : 'Denny Lavacca'}</span>
+              <span className="sb-user-email">{isHome ? 'ellie@acme.events' : 'denny@acme.events'}</span>
+            </span>
+            <span className="sb-team-chev" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m7 15 5 5 5-5" /><path d="m7 9 5-5 5 5" />
+              </svg>
+            </span>
+          </button>
+        </SidebarFooter>
 
+        {/* ── Rail — hover right edge to reveal, click to toggle ── */}
+        <SidebarRail />
+      </aside>
+    </_SbCtx.Provider>
+  );
 }
 window.Sidebar = Sidebar;
-</script>
+
+</script></script>
   <script type="text/babel">
 // Topbar — breadcrumbs + right-side controls
 function Topbar({ section, onToggleSidebar, right, showSidebarToggle = true, minimizeMode = false, homeCrumb = null, title = null }) {
@@ -8757,7 +8916,7 @@ function Topbar({ section, onToggleSidebar, right, showSidebarToggle = true, min
 }
 
 window.Topbar = Topbar;
-</script>
+</script></script>
   <script type="text/babel">
 // Routines screens
 const { useState: useStateR } = React;
@@ -9565,7 +9724,7 @@ function RoutineDetailFlyout({ routine, onClose, onToggle, onEdit, onDelete, onD
 
 window.RoutineDetailFlyout = RoutineDetailFlyout;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Policies screens
 const { useState: useStateP, useRef: useRefP } = React;
@@ -10761,7 +10920,7 @@ window.PoliciesLanding = PoliciesLanding;
 window.PoliciesChat = PoliciesChat;
 window.PolicyDetailFlyout = PolicyDetailFlyout;
 window.Sparkline = Sparkline;
-</script>
+</script></script>
   <script type="text/babel">
 // Insights screen - live interactive chart
 const { useState: useStateI, useMemo: useMemoI, useRef: useRefI } = React;
@@ -11293,7 +11452,7 @@ function SuppliersLeaderboard({ askAI }) {
 window.Insights = Insights;
 window.RingChart = RingChart;
 window.SuggestedActionFlyout = SuggestedActionFlyout;
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Dashboard > Events report
 // Refactored to use shadcn primitives.
@@ -11688,7 +11847,7 @@ function Dashboard({ tab, setTab }) {
 
 window.Dashboard = Dashboard;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Dashboard > Savings tab.
 
@@ -11866,7 +12025,7 @@ function DashboardSavings() {
 
 window.DashboardSavings = DashboardSavings;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Dashboard > Time savings tab.
 
@@ -12082,7 +12241,7 @@ function DashboardTimeSavings() {
 
 window.DashboardTimeSavings = DashboardTimeSavings;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Dashboard > Suppliers tab.
 
@@ -12395,7 +12554,7 @@ function DashboardSuppliers() {
 
 window.DashboardSuppliers = DashboardSuppliers;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Dashboard > Internal spaces tab.
 
@@ -12518,7 +12677,7 @@ function DashboardInternalSpaces() {
 
 window.DashboardInternalSpaces = DashboardInternalSpaces;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Dashboard > Room blocks tab.
 
@@ -12681,7 +12840,7 @@ function DashboardRoomBlocks() {
 
 window.DashboardRoomBlocks = DashboardRoomBlocks;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Users > Adoption
 // Static recreation — funnel chart, two stat cards, full users table.
@@ -12974,7 +13133,7 @@ function Users() {
 
 window.Users = Users;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Events tab — full event listing with KPIs + status bar header.
 const { useState: useStateE } = React;
@@ -13127,7 +13286,7 @@ function Events() {
 
 window.Events = Events;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Invoices tab — KPI row + invoices table.
 
@@ -13245,7 +13404,7 @@ function Invoices() {
 
 window.Invoices = Invoices;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Contracts tab — table only, status pills, category icons.
 
@@ -13355,7 +13514,7 @@ function Contracts() {
 
 window.Contracts = Contracts;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Task reporting tab — Assignee/Event summary tabs + summary table.
 
@@ -13442,7 +13601,7 @@ function TaskReporting() {
 
 window.TaskReporting = TaskReporting;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Approvals tab — reviewer avatars + Pending pills.
 
@@ -13552,7 +13711,7 @@ function Approvals() {
 
 window.Approvals = Approvals;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Preferred tab — Suppliers/Cities sub-tabs + simple table.
 
@@ -13618,7 +13777,7 @@ function Preferred() {
 
 window.Preferred = Preferred;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Intake forms tab.
 
@@ -13719,7 +13878,7 @@ function IntakeForms() {
 
 window.IntakeForms = IntakeForms;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Company settings page.
 
@@ -13839,7 +13998,7 @@ function CompanySettings() {
 
 window.CompanySettings = CompanySettings;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Internal spaces > Offices.
 
@@ -13924,7 +14083,7 @@ function Offices() {
 
 window.Offices = Offices;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Internal spaces > Spaces.
 
@@ -14028,7 +14187,7 @@ function Spaces() {
 
 window.Spaces = Spaces;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Admin > Internal spaces > Requests.
 
@@ -14078,7 +14237,7 @@ function Requests() {
 
 window.Requests = Requests;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Home mode — Ellie's planner view.
 // Screens: dashboard, my-events, event-detail, + stubs for tasks/inbox/suppliers/marketplace/agent.
@@ -14366,7 +14525,7 @@ function MyevAsset({ kicker, accent, title, desc, meta, coverTitle, coverKicker,
 }
 window.HomeEventsList = HomeEventsList;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Event Detail — Summer Design Summit example
 // Pipeline stepper + 3 responsibility columns + inline Agent chat panel.
@@ -14689,7 +14848,7 @@ function EventChatPanel({ onClose }) {
 }
 window.EventChatPanel = EventChatPanel;
 
-</script>
+</script></script>
   <script type="text/babel">
 // Root App — dual mode (home / admin)
 const { useState: useStateA, useEffect: useEffectA, useRef: useRefA } = React;
@@ -15284,7 +15443,7 @@ function SideChatResizer({ width, setWidth, collapsed }) {
 window.SideChatResizer = SideChatResizer;
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-</script>
+</script></script>
   <script>
 
 // Agentation — shimmed CJS bundle for browser UMD environment
@@ -27082,7 +27241,7 @@ function PageFeedbackToolbarCSS({
   }
 })();
 
-</script>
+</script></script>
   <script>
     // Mount Agentation in its own root, outside the app tree
     window.addEventListener('DOMContentLoaded', function() {
