@@ -9927,9 +9927,10 @@ function PoliciesLanding({ policies, pendingPolicies, togglePolicy, openDetail, 
       {/* All policies — unified table */}
       {(() => {
         const pending = pendingPolicies || [];
+        const sortedPending = [...pending].sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
         const allRows = [
+          ...sortedPending.map(p => ({ ...p, _kind: 'pending' })),
           ...activePolicies.map(p => ({ ...p, _kind: 'policy' })),
-          ...pending.map(p => ({ ...p, _kind: 'pending' })),
         ];
         if (allRows.length === 0) return null;
         return (
