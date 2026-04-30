@@ -2073,7 +2073,54 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 /* Tighten header → table spacing inside policies */
 .pol-page > .section-head { margin: 0; }
 .pol-page > .section-head + .sugg,
-.pol-page > .section-head + .list { margin-top: -16px; }
+.pol-page > .section-head + .list,
+.pol-page > .section-head + .pol-table { margin-top: -16px; }
+
+/* All policies — unified table */
+.pol-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px var(--border);
+  overflow: hidden;
+}
+.pol-table thead th {
+  font: 500 11px/1 var(--font-sans);
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--muted);
+  white-space: nowrap;
+}
+.pol-table thead tr th:first-child { border-radius: 12px 0 0 0; }
+.pol-table thead tr th:last-child { border-radius: 0 12px 0 0; text-align: right; }
+.pol-table tbody tr:last-child td:first-child { border-radius: 0 0 0 12px; }
+.pol-table tbody tr:last-child td:last-child { border-radius: 0 0 12px 0; }
+.pol-table td { padding: 13px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.pol-table tbody tr:last-child td { border-bottom: 0; }
+.pt-row { cursor: pointer; transition: background .1s; }
+.pt-row:hover td { background: color-mix(in oklab, var(--muted) 50%, transparent); }
+.pt-name-cell { min-width: 180px; }
+.pt-name { font: 500 13.5px/1.3 var(--font-sans); color: var(--foreground); }
+.pt-sub { font: 400 12px/1.3 var(--font-sans); color: var(--muted-foreground); margin-top: 3px; }
+.pt-detail { font: 400 12.5px/1.3 var(--font-sans); color: var(--muted-foreground); max-width: 320px; }
+.pt-badge {
+  display: inline-flex; align-items: center;
+  padding: 3px 9px; border-radius: 5px;
+  font: 600 10.5px/1 var(--font-sans); letter-spacing: 0.05em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.pt-active   { background: color-mix(in oklab, var(--positive-primary) 13%, transparent); color: var(--positive-primary); }
+.pt-disabled { background: var(--muted); color: var(--muted-foreground); }
+.pt-pending  { background: var(--warning-subtle); color: var(--warning-primary); }
+.pt-actions-cell { text-align: right; white-space: nowrap; }
+.pt-actions-cell > * + * { margin-left: 6px; }
+.pt-view-btn { height: 26px; font-size: 12px; padding: 0 10px; }
 .pol-page > .pol-chart-group {
   width: 100%;
   max-width: none;
@@ -9923,74 +9970,77 @@ function PoliciesLanding({ policies, pendingPolicies, togglePolicy, openDetail, 
         )}
       </div>
 
-      {/* Pending — only shown if any */}
-      {pendingPolicies && pendingPolicies.length > 0 && <>
-        <div className="section-head" style={{ marginTop: 28 }}>
-          <h3>
-            Pending setup
-            <span className="cnt" style={{ background: 'var(--warning-subtle)', color: 'var(--warning-primary)' }}>
-              {pendingPolicies.length}
-            </span>
-          </h3>
-          <span style={{ font: '400 12px/1 var(--font-sans)', color: 'var(--muted-foreground)' }}>Waiting for Dylan</span>
-        </div>
-        <div className="list">
-          {pendingPolicies.map(p =>
-            <div key={p.id} className="list-row" onClick={() => openPending(p)}
-              style={{ opacity: 0.85 }}>
-              <I.clock className="lr-icon" size={18} style={{ color: 'var(--warning-primary)' }} />
-              <div className="lr-body">
-                <div className="lr-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {p.name}
-                  <span style={{ font: '500 10px/1 var(--font-sans)', padding: '2px 7px', borderRadius: 4, background: 'var(--warning-subtle)', color: 'var(--warning-primary)', letterSpacing: '0.04em' }}>PENDING</span>
-                </div>
-                <div className="lr-meta">
-                  <span className="lr-chip">Requested {formatRelative(p.requestedAt)}</span>
-                  {p.notes && <span className="lr-chip">Has notes</span>}
-                </div>
-              </div>
-              <div className="lr-tail">
-                <button className="ellipsis-btn" onClick={e => e.stopPropagation()}><I.dots size={14} /></button>
-              </div>
+      {/* All policies — unified table */}
+      {(() => {
+        const pending = pendingPolicies || [];
+        const allRows = [
+          ...activePolicies.map(p => ({ ...p, _kind: 'policy' })),
+          ...pending.map(p => ({ ...p, _kind: 'pending' })),
+        ];
+        if (allRows.length === 0) return null;
+        return (
+          <>
+            <div className="section-head">
+              <h3>All policies <span className="cnt">{allRows.length}</span></h3>
             </div>
-          )}
-        </div>
-      </>}
-
-      {/* Active */}
-      <div className="section-head" style={{ marginTop: 28 }}>
-        <h3>Active <span className="cnt">{activePolicies.length}</span></h3>
-      </div>
-      <div className="list">
-        {activePolicies.map(p =>
-          <div key={p.id} className="list-row" onClick={() => openDetail(p.id)}>
-            {p.id === 'p4' ? <I.routines className="lr-icon" size={18} /> : <I.shield className="lr-icon" size={18} />}
-            <div className="lr-body">
-              <div className="lr-title">{p.name}</div>
-              <div className="lr-meta">
-                {p.guards ?
-                  <>
-                    <span className="lr-chip">{p.trigger} <I.chevron size={10} /></span>
-                    <span className="lr-chip">{p.guards}</span>
-                    <span className="lr-chip" style={{ marginLeft: -2 }}>• {p.type}</span>
-                    <span className="lr-chip" style={{ marginLeft: -2 }}>• {p.compliance}</span>
-                  </> :
-                  <>
-                    <span className="lr-chip pill"><I.shield size={11} /> {p.scope}</span>
-                    <span className="lr-chip"><I.calendar size={11} /> {p.schedule}</span>
-                    <span className="lr-chip"><I.email size={11} /> {p.delivery}</span>
-                    <span className="lr-chip"><I.clock size={11} /> Next in 4 days</span>
-                  </>
-                }
-              </div>
-            </div>
-            <div className="lr-tail">
-              <button className={`tog ${p.on ? 'on' : ''}`} onClick={e => { e.stopPropagation(); togglePolicy(p.id); }} />
-              <button className="ellipsis-btn" onClick={e => e.stopPropagation()}><I.dots size={14} /></button>
-            </div>
-          </div>
-        )}
-      </div>
+            <table className="pol-table">
+              <thead>
+                <tr>
+                  <th>Policy</th>
+                  <th>Status</th>
+                  <th>Details</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {allRows.map(p => {
+                  if (p._kind === 'pending') {
+                    return (
+                      <tr key={p.id} className="pt-row" onClick={() => openPending(p)}>
+                        <td className="pt-name-cell">
+                          <div className="pt-name">{p.name}</div>
+                          {p.desc && <div className="pt-sub">{p.desc}</div>}
+                        </td>
+                        <td><span className="pt-badge pt-pending">Pending</span></td>
+                        <td className="pt-detail">Requested {formatRelative(p.requestedAt)}{p.notes ? ' · Has notes' : ''}</td>
+                        <td className="pt-actions-cell">
+                          <button className="btn outline pt-view-btn"
+                            onClick={e => { e.stopPropagation(); openPending(p); }}>
+                            View status
+                          </button>
+                          <button className="ellipsis-btn" onClick={e => e.stopPropagation()}><I.dots size={14} /></button>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  const detail = p.guards
+                    ? `${p.trigger} · ${p.guards} · ${p.type}`
+                    : p.trigger || p.schedule || '';
+                  return (
+                    <tr key={p.id} className="pt-row" onClick={() => openDetail(p.id)}>
+                      <td className="pt-name-cell">
+                        <div className="pt-name">{p.name}</div>
+                        {p.compliance && <div className="pt-sub">{p.compliance}</div>}
+                      </td>
+                      <td>
+                        <span className={`pt-badge ${p.on ? 'pt-active' : 'pt-disabled'}`}>
+                          {p.on ? 'Active' : 'Disabled'}
+                        </span>
+                      </td>
+                      <td className="pt-detail">{detail}</td>
+                      <td className="pt-actions-cell">
+                        <button className={`tog ${p.on ? 'on' : ''}`}
+                          onClick={e => { e.stopPropagation(); togglePolicy(p.id); }} />
+                        <button className="ellipsis-btn" onClick={e => e.stopPropagation()}><I.dots size={14} /></button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </>
+        );
+      })()}
     </div>
   );
 }
