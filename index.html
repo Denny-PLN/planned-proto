@@ -9717,20 +9717,19 @@ window.RoutineDetailFlyout = RoutineDetailFlyout;
 
 </script></script>
   <script type="text/babel">
-// Policies screens
-const { useState: useStateP, useRef: useRefP } = React;
+// Policies — v1 read-only / request-setup flow
+// Lifecycle: Suggested → (request via email) → Pending → (Dylan activates) → Active
+const { useState: useStateP } = React;
 
-// Seed PRNG for stable realistic policy data
+// ─── Chart data ───────────────────────────────────────────────────────────────
 function _polRng(seed) {
   let s = seed;
-  return () => {s = (s * 9301 + 49297) % 233280;return s / 233280;};
+  return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
 }
 function _polSeries(seed, base, vol, trend, shockAt = null, shockDir = -1) {
   const r = _polRng(seed);
-  const n = 52;
-  const out = [];
-  let v = base;
-  for (let i = 0; i < n; i++) {
+  const out = []; let v = base;
+  for (let i = 0; i < 52; i++) {
     v += trend + (r() - 0.5) * vol * 2;
     if (shockAt && i === shockAt) v += vol * shockDir * 6;
     out.push(Math.max(0, v));
@@ -9738,1005 +9737,465 @@ function _polSeries(seed, base, vol, trend, shockAt = null, shockDir = -1) {
   return out;
 }
 
-// 52 weekly points per KPI. Compliance has the signature dip-and-recovery story.
 const POL_SERIES = {
-  active: _polSeries(101, 1, 0.08, 0.06), // 1 → ~4 policies active over the year
-  governed: _polSeries(202, 8, 0.7, 0.75), // 8 → ~47 events governed
-  compliance: (() => {
+  active:       _polSeries(101, 1, 0.08, 0.06),
+  governed:     _polSeries(202, 8, 0.7, 0.75),
+  compliance:   (() => {
     const base = _polSeries(303, 96, 0.9, 0.02);
-    // Engineer the dip so "All" view tells the story: plateau → dip → recover
     for (let i = 42; i <= 46; i++) base[i] = [88, 82, 71, 61, 74][i - 42];
     for (let i = 47; i < base.length; i++) base[i] = 92 + (base[i] - 92) * 0.4 + (i - 47) * 1.2;
-    return base.map((v) => Math.max(55, Math.min(100, v)));
+    return base.map(v => Math.max(55, Math.min(100, v)));
   })(),
-  value: _polSeries(404, 2.1, 0.35, 0.42), // $2.1k → ~$24.8k value protected
-  violations: _polSeries(505, 6, 0.6, -0.08, 44, 1).map((v) => Math.max(0, v)), // 6 → ~1 violations/wk, spike then drop
-  approvals: _polSeries(606, 2, 0.3, 0.1), // 2 → ~7 approval reviews/wk
-  timeToApprove: _polSeries(707, 34, 1.2, -0.4).map((v) => Math.max(6, v)) // 34h → ~14h avg time-to-approve
+  value:        _polSeries(404, 2.1, 0.35, 0.42),
+  violations:   _polSeries(505, 6, 0.6, -0.08, 44, 1).map(v => Math.max(0, v)),
+  approvals:    _polSeries(606, 2, 0.3, 0.1),
+  timeToApprove:_polSeries(707, 34, 1.2, -0.4).map(v => Math.max(6, v)),
 };
 
 const POL_META = {
-  active: { label: 'Policies active', fmt: (v) => Math.round(v), color: 'var(--action-primary)', sum: '4 policies live today — up from 1 at the start of the year. Coverage now spans budget, sourcing, and vendor risk across every event type.' },
-  governed: { label: 'Events governed', fmt: (v) => Math.round(v), color: 'var(--action-primary)', sum: '47 events ran through policy checks this quarter. Adoption is compounding — new planners default to the governed path without manual coaching.' },
-  compliance: { label: 'Compliance', fmt: (v) => v.toFixed(1) + '%', color: 'var(--action-primary)', sum: 'Compliance dipped to 61% in mid-August when SF AV bookings bypassed the preferred-vendor policy. Back to 98% after a planner-approval guard went in.' },
-  value: { label: 'Value protected', fmt: (v) => '$' + v.toFixed(1) + 'k', color: 'var(--action-primary)', sum: '$24.8k in avoided overages this quarter — a $12.4k save on the Q2 Partner Offsite catering overrun drove the biggest single chunk.' },
-  violations: { label: 'Violations', fmt: (v) => Math.round(v), color: 'var(--alert-primary)', sum: '1 violation this week (SF AV booking) — down from 6/week pre-policy. The Aug spike aligned with the preferred-vendor guard gap, now closed.' },
-  approvals: { label: 'Approvals reviewed', fmt: (v) => Math.round(v), color: 'var(--action-primary)', sum: '7 approval reviews this week across 3 admins. ~82% auto-approve at the threshold with no changes — a strong signal the budget cutoff is well-calibrated.' },
-  timeToApprove: { label: 'Time to approve', fmt: (v) => Math.round(v) + 'h', color: 'var(--action-primary)', sum: 'Median time-to-approve is 14h — down from 34h in Sep. Approvers are reviewing faster as the summary UI surfaces the decision context up front.' }
+  active:        { label: 'Policies active',    fmt: v => Math.round(v),         color: 'var(--action-primary)', sum: '4 policies live today — up from 1 at the start of the year. Coverage now spans budget, sourcing, and vendor risk across every event type.' },
+  governed:      { label: 'Events governed',    fmt: v => Math.round(v),         color: 'var(--action-primary)', sum: '47 events ran through policy checks this quarter. Adoption is compounding — new planners default to the governed path without manual coaching.' },
+  compliance:    { label: 'Compliance',         fmt: v => v.toFixed(1) + '%',    color: 'var(--action-primary)', sum: 'Compliance dipped to 61% in mid-August when SF AV bookings bypassed the preferred-vendor policy. Back to 98% after a planner-approval guard went in.' },
+  value:         { label: 'Value protected',    fmt: v => '$' + v.toFixed(1) + 'k', color: 'var(--action-primary)', sum: '$24.8k in avoided overages this quarter — a $12.4k save on the Q2 Partner Offsite catering overrun drove the biggest single chunk.' },
+  violations:    { label: 'Violations',         fmt: v => Math.round(v),         color: 'var(--alert-primary)',  sum: '1 violation this week (SF AV booking) — down from 6/week pre-policy. The Aug spike aligned with the preferred-vendor guard gap, now closed.' },
+  approvals:     { label: 'Approvals reviewed', fmt: v => Math.round(v),         color: 'var(--action-primary)', sum: '7 approval reviews this week across 3 admins. ~82% auto-approve at the threshold with no changes — a strong signal the budget cutoff is well-calibrated.' },
+  timeToApprove: { label: 'Time to approve',    fmt: v => Math.round(v) + 'h',   color: 'var(--action-primary)', sum: 'Median time-to-approve is 14h — down from 34h in Sep. Approvers are reviewing faster as the summary UI surfaces the decision context up front.' },
 };
 
 const POL_METRICS = [
-{ id: 'compliance', label: 'Compliance', value: '98%', delta: '2%', trend: 'up' },
-{ id: 'active', label: 'Policies active', value: '4', delta: '3', trend: 'up' },
-{ id: 'governed', label: 'Events governed', value: '47', delta: '39', trend: 'up' },
-{ id: 'violations', label: 'Violations', value: '1', delta: '5', trend: 'dn' },
-{ id: 'value', label: 'Value protected', value: '$24.8k', delta: '22.7k', trend: 'up' },
-{ id: 'approvals', label: 'Approvals', value: '7', delta: '5', trend: 'up' },
-{ id: 'timeToApprove', label: 'Time to approve', value: '14h', delta: '20h', trend: 'dn' }];
-
+  { id: 'compliance',    label: 'Compliance',        value: '98%',   delta: '2%',   trend: 'up' },
+  { id: 'active',        label: 'Policies active',   value: '4',     delta: '3',    trend: 'up' },
+  { id: 'governed',      label: 'Events governed',   value: '47',    delta: '39',   trend: 'up' },
+  { id: 'violations',    label: 'Violations',         value: '1',     delta: '5',    trend: 'dn' },
+  { id: 'value',         label: 'Value protected',   value: '$24.8k',delta: '22.7k',trend: 'up' },
+  { id: 'approvals',     label: 'Approvals',          value: '7',     delta: '5',    trend: 'up' },
+  { id: 'timeToApprove', label: 'Time to approve',   value: '14h',   delta: '20h',  trend: 'dn' },
+];
 
 const POL_DATES = (() => {
-  const end = new Date(2025, 8, 1); // Sep 1, 2025
+  const end = new Date(2025, 8, 1);
   const arr = [];
   for (let i = 51; i >= 0; i--) {
-    const d = new Date(end);
-    d.setDate(d.getDate() - i * 7);
-    arr.push(d);
+    const d = new Date(end); d.setDate(d.getDate() - i * 7); arr.push(d);
   }
   return arr;
 })();
 
-// Landing page — sc-card with tabbed KPIs (matches Insights)
-function PoliciesLanding({ policies, togglePolicy, openDetail, openChat, openSuggested, goInsights }) {
+// ─── Workflow templates for suggested policies ────────────────────────────────
+// Each suggested policy maps to a workflow the user can review + lightly edit
+// before emailing Dylan to set it up.
+const SUGG_WORKFLOWS = {
+  'Require planner approval above $25k': {
+    trigger: 'Event is created',
+    conds: [{ conj: 'If', field: 'Budget', op: '≥', value: '$25,000' }],
+    decide: 'Require any of Emma C., Dennis L.',
+    fallback: 'Auto-approve',
+  },
+  'Mandatory 3 quotes for catering > $5k': {
+    trigger: 'Sourcing starts',
+    conds: [{ conj: 'If', field: 'Budget', op: '≥', value: '$5,000' }],
+    decide: 'Require any of Emma C.',
+    fallback: 'Notify owner',
+  },
+  'Auto-room block over-estimation': {
+    trigger: 'Event is created',
+    conds: [{ conj: 'If', field: 'Headcount', op: '≥', value: '15' }],
+    decide: 'Require any of Dennis L.',
+    fallback: 'Auto-approve',
+  },
+  'Require 3 quotes for events over $25K': {
+    trigger: 'Sourcing starts',
+    conds: [{ conj: 'If', field: 'Budget', op: '≥', value: '$25,000' }],
+    decide: 'Require any of Emma C., Dennis L.',
+    fallback: 'Notify owner',
+  },
+};
+
+const DEFAULT_WORKFLOW = {
+  trigger: 'Event is created',
+  conds: [{ conj: 'If', field: 'Budget', op: '≥', value: '$10,000' }],
+  decide: 'Require any of 2 admins',
+  fallback: 'Auto-approve',
+};
+
+function getWorkflow(policy) {
+  const key = policy?.title || policy?.name || '';
+  return SUGG_WORKFLOWS[key] || DEFAULT_WORKFLOW;
+}
+
+// ─── mailto helper ────────────────────────────────────────────────────────────
+function buildMailto(policy, conds, notes) {
+  const name = policy?.title || policy?.name || 'Policy';
+  const subject = `Policy setup request: ${name}`;
+  const condStr = conds.map(c => `${c.field} ${c.op} ${c.value}`).join(', ');
+  const body = [
+    'Hi Dylan,',
+    '',
+    "I'd like to set up the following policy for our account:",
+    '',
+    `Policy: ${name}`,
+    policy?.desc ? `Background: ${policy.desc}` : '',
+    '',
+    `Workflow: ${condStr || 'as described'}`,
+    notes ? `\nNotes: ${notes}` : '',
+    '',
+    'Could you please configure this?',
+    '',
+    'Thanks',
+  ].filter(l => l !== null).join('\n');
+  return `mailto:dylan@planned.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+// ─── Landing ──────────────────────────────────────────────────────────────────
+function PoliciesLanding({ policies, pendingPolicies, togglePolicy, openDetail, openSuggested, openPending, goInsights }) {
   const [active, setActive] = useStateP('compliance');
   const [range, setRange] = useStateP('All');
 
-  const series = POL_SERIES[active];
   const meta = POL_META[active];
-  const months = [0, 10, 20, 30, 40, 51];
-
-  // Build shadcn-chart data: one row per week, every metric as a column
   const rangeMap = { '1D': 8, '1W': 12, '1M': 16, '3M': 24, 'YTD': 36, '1Y': 44, '5Y': 52, 'All': 52 };
   const take = rangeMap[range] || 52;
   const start = Math.max(0, 52 - take);
   const chartData = POL_DATES.slice(start).map((d, i) => {
     const idx = start + i;
     const row = { date: d.toISOString().slice(0, 10) };
-    Object.keys(POL_SERIES).forEach((k) => {row[k] = POL_SERIES[k][idx];});
+    Object.keys(POL_SERIES).forEach(k => { row[k] = POL_SERIES[k][idx]; });
     return row;
   });
   const ShadcnChart = window.ShadcnChart;
   const valueFormatter = (v, key) => (POL_META[key] || meta).fmt(v);
 
+  const activePolicies = policies.filter(p => !p.status || p.status === 'active');
+
   return (
     <div className="pol-page">
-      <div className="ins-chart-group" style={{ width: "100%" }}>
+      <div className="ins-chart-group" style={{ width: '100%' }}>
         <div className="ins-chart-toolbar">
           <div className="ins-chart-toolbar-title">
             <div className="sc-card-title">Policies insights</div>
             <div className="sc-card-desc">{`Showing ${meta.label.toLowerCase()} over time`}</div>
           </div>
           <div className="sc-range-pills" role="tablist" style={{ marginBottom: 0 }}>
-            {['1D', '1W', '1M', '3M', 'YTD', '1Y', '5Y', 'All'].map((r) =>
-            <button key={r} role="tab" data-active={range === r} className="sc-range-pill" onClick={() => setRange(r)}>
-                {r}
-              </button>
+            {['1D','1W','1M','3M','YTD','1Y','5Y','All'].map(r =>
+              <button key={r} role="tab" data-active={range === r} className="sc-range-pill" onClick={() => setRange(r)}>{r}</button>
             )}
           </div>
         </div>
         {ShadcnChart &&
-        <ShadcnChart
-          metrics={POL_METRICS}
-          activeId={active}
-          onActive={setActive}
-          data={chartData}
-          valueFormatter={valueFormatter}
-          color="var(--chart-2)"
-          height={280}
-          recap={
-          <div className="ins-recap ins-recap--embedded">
+          <ShadcnChart
+            metrics={POL_METRICS} activeId={active} onActive={setActive}
+            data={chartData} valueFormatter={valueFormatter}
+            color="var(--chart-2)" height={280}
+            recap={
+              <div className="ins-recap ins-recap--embedded">
                 <div className="ins-recap-head">
                   <span className="ico">✦</span>
                   <span className="t">Summary</span>
                   <span className="stamp">Summarized at 6:00 AM</span>
                   <button className="ins-recap-expand" title="Expand"><I.arrowUpRight size={13} /></button>
                 </div>
-                <div className="ins-recap-body">
-                  {meta.sum}
-                </div>
-                <button className="ask-ai-link" onClick={() => openChat && openChat()}>
-                  Ask AI <I.arrowRight size={13} />
-                </button>
+                <div className="ins-recap-body">{meta.sum}</div>
               </div>
-          } />
-
+            }
+          />
         }
       </div>
 
+      {/* Suggested */}
       <div className="section-head">
         <h3>Suggested policies</h3>
         <button className="side-link" onClick={goInsights}>All insights <I.chevron size={11} /></button>
       </div>
       <div className="sugg">
         {DATA.suggestedPolicies.map((p, i) =>
-        <div key={i} className={`sugg-row ${p.big ? 'big' : ''}`} onClick={() => openSuggested(p)}>
+          <div key={i} className={`sugg-row ${p.big ? 'big' : ''}`} onClick={() => openSuggested(p)}>
             <div className="dot" />
             <div className="bd">
               <div className="t">{p.title}</div>
               <div className="d">{p.desc}</div>
             </div>
-            {p.impact &&
-          <span className="impact"><I.arrowUpRight size={10} /> {p.impact}</span>
-          }
-            <button className="sugg-cta" onClick={(e) => {e.stopPropagation();openSuggested(p);}}>
-              Review
-            </button>
+            {p.impact && <span className="impact"><I.arrowUpRight size={10} /> {p.impact}</span>}
+            <button className="sugg-cta" onClick={e => { e.stopPropagation(); openSuggested(p); }}>Review</button>
           </div>
         )}
       </div>
 
-      <div className="section-head">
-        <h3>Active <span className="cnt">{policies.length}</span></h3>
-        <button className="sa-filter"><I.plus size={12} /> All <I.chevronDown size={12} /></button>
+      {/* Pending — only shown if any */}
+      {pendingPolicies && pendingPolicies.length > 0 && <>
+        <div className="section-head" style={{ marginTop: 28 }}>
+          <h3>
+            Pending setup
+            <span className="cnt" style={{ background: 'var(--warning-subtle)', color: 'var(--warning-primary)' }}>
+              {pendingPolicies.length}
+            </span>
+          </h3>
+          <span style={{ font: '400 12px/1 var(--font-sans)', color: 'var(--muted-foreground)' }}>Waiting for Dylan</span>
+        </div>
+        <div className="list">
+          {pendingPolicies.map(p =>
+            <div key={p.id} className="list-row" onClick={() => openPending(p)}
+              style={{ opacity: 0.85 }}>
+              <I.clock className="lr-icon" size={18} style={{ color: 'var(--warning-primary)' }} />
+              <div className="lr-body">
+                <div className="lr-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {p.name}
+                  <span style={{ font: '500 10px/1 var(--font-sans)', padding: '2px 7px', borderRadius: 4, background: 'var(--warning-subtle)', color: 'var(--warning-primary)', letterSpacing: '0.04em' }}>PENDING</span>
+                </div>
+                <div className="lr-meta">
+                  <span className="lr-chip">Requested {formatRelative(p.requestedAt)}</span>
+                  {p.notes && <span className="lr-chip">Has notes</span>}
+                </div>
+              </div>
+              <div className="lr-tail">
+                <button className="ellipsis-btn" onClick={e => e.stopPropagation()}><I.dots size={14} /></button>
+              </div>
+            </div>
+          )}
+        </div>
+      </>}
+
+      {/* Active */}
+      <div className="section-head" style={{ marginTop: 28 }}>
+        <h3>Active <span className="cnt">{activePolicies.length}</span></h3>
       </div>
       <div className="list">
-        {policies.map((p) =>
-        <div key={p.id} className="list-row" onClick={() => openDetail(p.id)}>
+        {activePolicies.map(p =>
+          <div key={p.id} className="list-row" onClick={() => openDetail(p.id)}>
             {p.id === 'p4' ? <I.routines className="lr-icon" size={18} /> : <I.shield className="lr-icon" size={18} />}
             <div className="lr-body">
               <div className="lr-title">{p.name}</div>
               <div className="lr-meta">
                 {p.guards ?
-              <>
+                  <>
                     <span className="lr-chip">{p.trigger} <I.chevron size={10} /></span>
                     <span className="lr-chip">{p.guards}</span>
                     <span className="lr-chip" style={{ marginLeft: -2 }}>• {p.type}</span>
                     <span className="lr-chip" style={{ marginLeft: -2 }}>• {p.compliance}</span>
                   </> :
-
-              <>
+                  <>
                     <span className="lr-chip pill"><I.shield size={11} /> {p.scope}</span>
                     <span className="lr-chip"><I.calendar size={11} /> {p.schedule}</span>
                     <span className="lr-chip"><I.email size={11} /> {p.delivery}</span>
                     <span className="lr-chip"><I.clock size={11} /> Next in 4 days</span>
                   </>
-              }
+                }
               </div>
             </div>
             <div className="lr-tail">
-              <button className={`tog ${p.on ? 'on' : ''}`} onClick={(e) => {e.stopPropagation();togglePolicy(p.id);}} />
-              <button className="ellipsis-btn" onClick={(e) => e.stopPropagation()}><I.dots size={14} /></button>
+              <button className={`tog ${p.on ? 'on' : ''}`} onClick={e => { e.stopPropagation(); togglePolicy(p.id); }} />
+              <button className="ellipsis-btn" onClick={e => e.stopPropagation()}><I.dots size={14} /></button>
             </div>
           </div>
         )}
       </div>
-    </div>);
-
+    </div>
+  );
 }
 
-// Tiny sparkline SVG (bar chart look)
+function formatRelative(iso) {
+  if (!iso) return 'recently';
+  const ms = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 2) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+// ─── Sparkline ────────────────────────────────────────────────────────────────
 function Sparkline({ variant = 0 }) {
   const sets = [
-  [5, 8, 6, 9, 7, 11, 9, 13, 10, 15, 12, 18],
-  [4, 6, 5, 8, 6, 9, 7, 11, 9, 13, 10, 16],
-  [3, 5, 4, 7, 5, 8, 6, 10, 8, 12, 9, 15],
-  [6, 9, 7, 11, 8, 13, 10, 16, 12, 19, 14, 22]];
-
+    [5,8,6,9,7,11,9,13,10,15,12,18],
+    [4,6,5,8,6,9,7,11,9,13,10,16],
+    [3,5,4,7,5,8,6,10,8,12,9,15],
+    [6,9,7,11,8,13,10,16,12,19,14,22],
+  ];
   const vals = sets[variant % sets.length];
-  const W = 56,H = 28,PAD = 2;
-  const min = Math.min(...vals),max = Math.max(...vals);
+  const W = 56, H = 28, PAD = 2;
+  const min = Math.min(...vals), max = Math.max(...vals);
   const rng = Math.max(max - min, 0.001);
-  const xAt = (i) => PAD + i * (W - PAD * 2) / (vals.length - 1);
-  const yAt = (v) => PAD + (1 - (v - min) / rng) * (H - PAD * 2);
-  // smooth monotone path
+  const xAt = i => PAD + i * (W - PAD * 2) / (vals.length - 1);
+  const yAt = v => PAD + (1 - (v - min) / rng) * (H - PAD * 2);
   let path = `M${xAt(0)},${yAt(vals[0])}`;
   for (let i = 1; i < vals.length; i++) {
-    const x1 = xAt(i - 1),y1 = yAt(vals[i - 1]);
-    const x2 = xAt(i),y2 = yAt(vals[i]);
+    const x1 = xAt(i-1), y1 = yAt(vals[i-1]);
+    const x2 = xAt(i),   y2 = yAt(vals[i]);
     const cx = (x1 + x2) / 2;
-    path += ` Q${cx},${y1} ${cx},${(y1 + y2) / 2} T${x2},${y2}`;
+    path += ` Q${cx},${y1} ${cx},${(y1+y2)/2} T${x2},${y2}`;
   }
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="spark">
       <path d={path} fill="none" stroke="var(--positive-primary)" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>);
-
+    </svg>
+  );
 }
 
-// Main chart (compliance trend) — shadcn-style line chart with hover tooltip
-function ChartWithTooltip() {
-  const svgRef = useRefP(null);
-  const [hover, setHover] = useStateP(null);
-  // 12 weeks of weekly compliance, ~Jun 9 through Sep 1, 2025
-  const points = [
-  { d: 'Jun 9, 2025', v: 96 },
-  { d: 'Jun 16, 2025', v: 97 },
-  { d: 'Jun 23, 2025', v: 98 },
-  { d: 'Jun 30, 2025', v: 96 },
-  { d: 'Jul 7, 2025', v: 99 },
-  { d: 'Jul 14, 2025', v: 97 },
-  { d: 'Jul 21, 2025', v: 94 },
-  { d: 'Jul 28, 2025', v: 89 },
-  { d: 'Aug 4, 2025', v: 82 },
-  { d: 'Aug 11, 2025', v: 71 },
-  { d: 'Aug 18, 2025', v: 61 }, // dip
-  { d: 'Aug 25, 2025', v: 88 },
-  { d: 'Sep 1, 2025', v: 98 }];
-
-  const W = 850,H = 210,PX = 18,PY = 18;
-  const iw = W - PX * 2;
-  const ih = H - PY * 2;
-  const xAt = (i) => PX + i / (points.length - 1) * iw;
-  const yAt = (v) => PY + (1 - (v - 55) / 45) * ih;
-
-  const path = points.map((p, i) => {
-    const x = xAt(i),y = yAt(p.v);
-    if (i === 0) return `M${x},${y}`;
-    const px = xAt(i - 1),py = yAt(points[i - 1].v);
-    const cx1 = px + (x - px) / 2,cx2 = px + (x - px) / 2;
-    return `C${cx1},${py} ${cx2},${y} ${x},${y}`;
-  }).join(' ');
-
-  const onMove = (e) => {
-    const rect = svgRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width * W;
-    const frac = (x - PX) / iw;
-    const idx = Math.max(0, Math.min(points.length - 1, Math.round(frac * (points.length - 1))));
-    setHover(idx);
-  };
-  const onLeave = () => setHover(null);
-
-  const hasHover = hover != null;
-  const hi = hasHover ? hover : 10;
-  const hx = xAt(hi);
-  const hy = yAt(points[hi].v);
-  const xTicks = [0, 3, 6, 9, 12];
-
+// ─── WorkflowView ─────────────────────────────────────────────────────────────
+// Renders trigger → conditions → who decides → outcome
+// editConds/setEditConds: only provided in editable mode (suggested/pending)
+function WorkflowView({ workflow, editConds, setEditConds }) {
+  const editable = !!setEditConds;
+  const conds = editable ? editConds : workflow.conds;
   return (
-    <div className="sc-chart-box" style={{ position: 'relative' }}>
-      <svg ref={svgRef} width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
-      onMouseMove={onMove} onMouseLeave={onLeave}
-      style={{ display: 'block' }}>
-        {[0, 0.25, 0.5, 0.75, 1].map((t, i) => {
-          const y = PY + t * ih;
-          return <line key={i} x1={PX} x2={W - PX} y1={y} y2={y} stroke="var(--border)" strokeWidth="1" strokeDasharray={i === 4 ? '' : '2 4'} />;
-        })}
-        <path d={path} fill="none" stroke="var(--foreground)" strokeWidth="2" />
-        <line x1={hx} y1={PY} x2={hx} y2={H - PY} stroke="var(--ring)" strokeDasharray="3 3" strokeWidth="1" style={{ opacity: hasHover ? 1 : 0 }} />
-        <circle cx={hx} cy={hy} r={4} fill="#fff" stroke="var(--foreground)" strokeWidth="2" style={{ opacity: hasHover ? 1 : 0 }} />
-      </svg>
-      {/* x-axis labels */}
-      <div className="sc-chart-xaxis" style={{ padding: '8px 18px 0' }}>
-        {xTicks.map((i) => <span key={i}>{points[i].d.split(',')[0]}</span>)}
+    <div className="wf" style={{ padding: '12px 0 0' }}>
+      {/* Trigger */}
+      <div className="wf-trigger">
+        <div className="ico"><I.calendar size={14} /></div>
+        <div className="bd">
+          <div className="t">{workflow.trigger}</div>
+        </div>
+        <I.info size={12} style={{ color: 'var(--muted-foreground)' }} />
       </div>
-      {hasHover && (() => {
-        const rect = svgRef.current && svgRef.current.getBoundingClientRect();
-        const pxX = rect ? hx / W * rect.width : 0;
-        const pxY = rect ? hy / H * rect.height : 0;
-        const boxW = 160;
-        const left = Math.min(Math.max(pxX + 12, 0), (rect ? rect.width : W) - boxW - 4);
-        const top = Math.max(pxY - 8, 0);
-        return (
-          <div className="sc-tooltip" style={{ left, top, width: boxW }}>
-            <div className="sc-tt-label">{points[hi].d}</div>
-            <div className="sc-tt-row">
-              <span className="sc-tt-indicator" style={{ background: 'var(--foreground)' }} />
-              <span className="sc-tt-name">Compliance</span>
-              <span className="sc-tt-value">{points[hi].v}%</span>
+
+      {/* Conditions */}
+      {conds.length > 0 && (
+        <div className="wf-step">
+          <div className="num">1</div>
+          <div className="conds">
+            {conds.map((c, i) => (
+              <div key={i} className="cond-row">
+                <div className="sel op">{c.conj}</div>
+                <div className="sel">{c.field}</div>
+                <div className="sel op">{c.op}</div>
+                {editable ? (
+                  <input
+                    className="sel num-input"
+                    style={{ border: 'none', outline: 'none', background: 'transparent', flex: '1 1 auto', minWidth: 0, font: '400 12.5px/1 var(--font-sans)', cursor: 'text' }}
+                    value={c.value}
+                    onClick={e => e.stopPropagation()}
+                    onChange={e => setEditConds(prev => prev.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
+                  />
+                ) : (
+                  <div className="sel num-input">{c.value}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Who decides */}
+      <div className="wf-step">
+        <div className="num">{conds.length > 0 ? 2 : 1}</div>
+        <div className="conds">
+          <div className="cond-row">
+            <div className="sel" style={{ flex: '1 1 auto', color: 'var(--muted-foreground)', fontSize: 12 }}>
+              {workflow.decide}
             </div>
-          </div>);
+          </div>
+        </div>
+      </div>
 
-      })()}
-    </div>);
+      {/* Fallback */}
+      <div className="wf-outcome">
+        <div className="ico" style={{ background: 'var(--action-subtle)', color: 'var(--action-primary)' }}>
+          <I.shieldCheck size={14} />
+        </div>
+        <div className="bd">
+          <div className="t">{workflow.fallback}</div>
+        </div>
+      </div>
 
+      {/* Policy enforced */}
+      <div className="wf-outcome pos">
+        <div className="ico"><I.check size={14} /></div>
+        <div className="bd"><div className="t">Policy is enforced</div></div>
+      </div>
+    </div>
+  );
 }
 
-// Admins roster
-const ADMINS = [
-{ id: 'e', name: 'Emma Chen', color: 'var(--decorative-lavender-600)', initial: 'E' },
-{ id: 'd', name: 'Dennis L.', color: 'var(--decorative-butterfly-pea-600)', initial: 'D' },
-{ id: 'r', name: 'Ravi Patel', color: 'var(--decorative-mint-600)', initial: 'R' },
-{ id: 's', name: 'Sofia Gómez', color: 'var(--decorative-champagne-600)', initial: 'S' },
-{ id: 'm', name: 'Marcus Lee', color: 'var(--decorative-matcha-600)', initial: 'M' }];
+// ─── Pending confirm modal ────────────────────────────────────────────────────
+function PendingConfirmModal({ onMarkPending, onNotYet }) {
+  return (
+    <>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 110, background: 'rgba(0,0,0,0.15)' }} onClick={onNotYet} />
+      <div style={{
+        position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%,-50%)',
+        zIndex: 120, background: '#fff', borderRadius: 16,
+        border: '1px solid var(--border)', boxShadow: '0 20px 60px rgba(0,0,0,0.14)',
+        padding: '32px 28px 24px', maxWidth: 360, width: '90%', textAlign: 'center',
+      }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--action-subtle)', color: 'var(--action-primary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+          <I.email size={20} />
+        </div>
+        <div style={{ font: '500 15px/1.3 var(--font-sans)', color: 'var(--foreground)', marginBottom: 8 }}>
+          Your email to Dylan is ready
+        </div>
+        <div style={{ font: '400 13px/1.5 var(--font-sans)', color: 'var(--muted-foreground)', marginBottom: 24 }}>
+          Your email client should have opened with a pre-filled message. Did you send it?
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn outline" style={{ flex: 1, height: 34 }} onClick={onNotYet}>Not yet</button>
+          <button className="btn" style={{ flex: 1, height: 34 }} onClick={onMarkPending}>
+            <I.check size={13} /> Yes, mark as pending
+          </button>
+        </div>
+        <div style={{ font: '400 11px/1.4 var(--font-sans)', color: 'var(--muted-foreground)', marginTop: 14 }}>
+          Usually configured within 1 business day.
+        </div>
+      </div>
+    </>
+  );
+}
 
+// ─── Policy detail flyout ─────────────────────────────────────────────────────
+// mode: 'suggested' | 'pending' | 'active'
+function PolicyDetailFlyout({ onClose, onRequestSetup, onCancelPending, mode, policy }) {
+  const isSuggested = mode === 'suggested';
+  const isPending   = mode === 'pending';
+  const isActive    = mode === 'active';
 
-const TRIGGER_OPTS = [
-{ id: 'created', icon: I.calendar, t: 'Event is created', d: 'Any new event in the workspace' },
-{ id: 'sourced', icon: I.bolt, t: 'Sourcing starts', d: 'A planner begins sourcing a venue' },
-{ id: 'booked', icon: I.shieldCheck, t: 'Booking confirmed', d: 'Venue or vendor contract signed' },
-{ id: 'invoice', icon: I.email, t: 'Invoice submitted', d: 'Any invoice lands in the queue' }];
+  const title = policy?.title || policy?.name || 'Policy';
+  const wfTemplate = getWorkflow(policy);
 
-const FIELD_OPTS = ['Budget', 'Headcount', 'Event type', 'Location', 'Vendor'];
-const OP_OPTS = ['≥', '>', '=', '≤', '<'];
-const TYPE_OPTS = ['Offsite', 'Onsite', 'Client dinner', 'Conference', 'Internal'];
-const CONJ_OPTS = ['And', 'Or'];
+  // Editable condition values (suggested only)
+  const [editConds, setEditConds] = useStateP(() =>
+    isSuggested ? wfTemplate.conds.map(c => ({ ...c })) : []
+  );
+  const [notes, setNotes] = useStateP(policy?.notes || '');
+  const [showConfirm, setShowConfirm] = useStateP(false);
 
-const TEMPLATES = [
-{
-  id: 'large-events',
-  icon: I.shieldCheck,
-  name: 'Approval for large events',
-  summary: 'Require admin sign-off when budget ≥ $20k',
-  accent: 'lavender',
-  wf: {
-    name: 'Approval for large events',
-    trigger: 'created',
-    conds: [
-    { id: 1, conj: 'If', field: 'Budget', op: '≥', value: '$20,000' },
-    { id: 2, conj: 'And', field: 'Event type', op: 'is', value: 'Offsite' }],
-
-    admins: ['e', 'd', 'r', 's', 'm'],
-    requireMode: 'Require any',
-    fallback: 'Auto-approve'
-  }
-},
-{
-  id: 'three-quotes',
-  icon: I.shield,
-  name: 'Require 3 quotes for sourcing',
-  summary: 'Planners must submit 3 vendor quotes per RFP',
-  accent: 'matcha',
-  wf: {
-    name: 'Require 3 quotes for sourcing',
-    trigger: 'sourced',
-    conds: [
-    { id: 1, conj: 'If', field: 'Budget', op: '≥', value: '$5,000' }],
-
-    admins: ['e', 'd'],
-    requireMode: 'Require any',
-    fallback: 'Notify owner'
-  }
-},
-{
-  id: 'room-block',
-  icon: I.bell,
-  name: 'Auto-room block for big groups',
-  summary: 'Reserve a room block when headcount ≥ 50',
-  accent: 'champagne',
-  wf: {
-    name: 'Auto-room block for big groups',
-    trigger: 'created',
-    conds: [
-    { id: 1, conj: 'If', field: 'Headcount', op: '≥', value: '50' }],
-
-    admins: ['d'],
-    requireMode: 'Require any',
-    fallback: 'Auto-approve'
-  }
-},
-{
-  id: 'vendor-risk',
-  icon: I.sparkle,
-  name: 'Vendor risk review',
-  summary: 'Flag new vendors for compliance review',
-  accent: 'lavender',
-  wf: {
-    name: 'Vendor risk review',
-    trigger: 'sourced',
-    conds: [
-    { id: 1, conj: 'If', field: 'Vendor', op: 'is', value: 'Offsite' }],
-
-    admins: ['r', 's'],
-    requireMode: 'Require any',
-    fallback: 'Notify owner'
-  }
-},
-{
-  id: 'client-dinner',
-  icon: I.shield,
-  name: 'Executive client dinners',
-  summary: 'Route client dinners > $1k through exec approval',
-  accent: 'matcha',
-  wf: {
-    name: 'Executive client dinners',
-    trigger: 'created',
-    conds: [
-    { id: 1, conj: 'If', field: 'Event type', op: 'is', value: 'Client dinner' },
-    { id: 2, conj: 'And', field: 'Budget', op: '≥', value: '$1,000' }],
-
-    admins: ['e'],
-    requireMode: 'Require any',
-    fallback: 'Notify owner'
-  }
-}];
-
-
-// Policy composer — Routines-style wizard with templates, prompt, recipe cards
-function PoliciesChat({ onClose, onSave, initialPolicy }) {
-  // Seed wf from a policy being edited, or blank
-  const seedWf = () => {
-    if (initialPolicy?._raw) return { ...initialPolicy._raw };
-    if (initialPolicy) {
-      // Best-effort back-fill from summary
-      const trig = TRIGGER_OPTS.find(t => t.t === initialPolicy.trigger)?.id || 'created';
-      return {
-        name: initialPolicy.name || '',
-        desc: initialPolicy.desc || initialPolicy.name || '',
-        trigger: trig,
-        conds: [],
-        admins: [],
-        requireMode: 'Require any',
-        fallback: 'Auto-approve',
-      };
-    }
-    return {
-      name: '',
-      desc: '',
-      trigger: 'created',
-      conds: [],
-      admins: [],
-      requireMode: 'Require any',
-      fallback: 'Auto-approve',
-    };
-  };
-  const [wf, setWf] = useStateP(seedWf);
-  const [openMenu, setOpenMenu] = useStateP(null);
-  const [open, setOpen] = useStateP({ when: false, match: false, decide: false, fallback: false });
-  const [activeTemplate, setActiveTemplate] = useStateP(null);
-  const [lastFilledPrompt, setLastFilledPrompt] = useStateP('');
-  const [saved, setSaved] = useStateP(false);
-  const nameRef = useRefP(null);
-
-  React.useEffect(() => {
-    const t = setTimeout(() => nameRef.current && nameRef.current.focus(), 50);
-    return () => clearTimeout(t);
-  }, []);
-
-  const set = (patch) => setWf(w => ({ ...w, ...patch }));
-  const toggle = (key) => setOpen(o => ({ ...o, [key]: !o[key] }));
-  const closeAll = () => setOpen({ when: false, match: false, decide: false, fallback: false });
-
-  // ── Templates (Routines-style cards) ─────────────────────
-  const TPLS = [
-    { icon: I.shieldCheck, title: 'Approval for large events', desc: 'Require admin sign-off when budget ≥ $20k',
-      apply: { name: 'Approval for large events', desc: 'When an event is created with budget ≥ $20,000, require admin approval.', trigger: 'created',
-        conds: [{ id: 1, conj: 'If', field: 'Budget', op: '≥', value: '$20,000' }, { id: 2, conj: 'And', field: 'Event type', op: 'is', value: 'Offsite' }],
-        admins: ['e','d','r'], requireMode: 'Require any', fallback: 'Auto-approve' } },
-    { icon: I.shield, title: '3 quotes for sourcing', desc: 'Planners must submit 3 vendor quotes per RFP',
-      apply: { name: 'Require 3 quotes for sourcing', desc: 'When sourcing starts on a budget ≥ $5,000, require 3 vendor quotes.', trigger: 'sourced',
-        conds: [{ id: 1, conj: 'If', field: 'Budget', op: '≥', value: '$5,000' }],
-        admins: ['e','d'], requireMode: 'Require any', fallback: 'Notify owner' } },
-    { icon: I.bell, title: 'Auto room block for big groups', desc: 'Reserve a room block when headcount ≥ 50',
-      apply: { name: 'Auto-room block for big groups', desc: 'When an event is created with headcount ≥ 50, auto-reserve a room block.', trigger: 'created',
-        conds: [{ id: 1, conj: 'If', field: 'Headcount', op: '≥', value: '50' }],
-        admins: ['d'], requireMode: 'Require any', fallback: 'Auto-approve' } },
-    { icon: I.sparkle, title: 'Vendor risk review', desc: 'Flag new vendors for compliance review',
-      apply: { name: 'Vendor risk review', desc: 'When sourcing starts with a new vendor, route through compliance review.', trigger: 'sourced',
-        conds: [{ id: 1, conj: 'If', field: 'Vendor', op: 'is', value: 'Offsite' }],
-        admins: ['r','s'], requireMode: 'Require any', fallback: 'Notify owner' } },
-    { icon: I.shield, title: 'Executive client dinners', desc: 'Route client dinners > $1k through exec approval',
-      apply: { name: 'Executive client dinners', desc: 'When a client dinner is created above $1,000, route through executive approval.', trigger: 'created',
-        conds: [{ id: 1, conj: 'If', field: 'Event type', op: 'is', value: 'Client dinner' }, { id: 2, conj: 'And', field: 'Budget', op: '≥', value: '$1,000' }],
-        admins: ['e'], requireMode: 'Require any', fallback: 'Notify owner' } },
-    { icon: I.email, title: 'Invoice review', desc: 'Flag invoices over $10k for review',
-      apply: { name: 'Invoice review threshold', desc: 'When an invoice is submitted above $10,000, require review by finance.', trigger: 'invoice',
-        conds: [{ id: 1, conj: 'If', field: 'Budget', op: '≥', value: '$10,000' }],
-        admins: ['e','d'], requireMode: 'Require any', fallback: 'Auto-approve' } },
-  ];
-
-  const applyTemplate = (tpl) => {
-    setWf(w => ({ ...w, ...tpl.apply }));
-    setActiveTemplate(tpl);
-    setLastFilledPrompt(tpl.apply.desc || '');
-    closeAll();
-  };
-  const resetForm = () => {
-    setWf({ name: '', desc: '', trigger: 'created', conds: [], admins: [], requireMode: 'Require any', fallback: 'Auto-approve' });
-    setActiveTemplate(null);
-    setLastFilledPrompt('');
-    closeAll();
-    setTimeout(() => nameRef.current && nameRef.current.focus(), 50);
+  const handleRequestSetup = () => {
+    const href = buildMailto(policy, editConds, notes);
+    window.open(href, '_self');
+    setTimeout(() => setShowConfirm(true), 600);
   };
 
-  // ── Magic fill: parse prompt → wf ────────────────────────
-  const magicFill = () => {
-    const t = (wf.desc || '').toLowerCase();
-    const next = { ...wf };
-    // Trigger
-    if (/sourc/.test(t)) next.trigger = 'sourced';
-    else if (/invoice/.test(t)) next.trigger = 'invoice';
-    else if (/approv/.test(t)) next.trigger = 'approval';
-    else next.trigger = 'created';
-    // Conditions (budget & headcount detection)
-    const conds = [];
-    const budget = t.match(/\$\s?([0-9]{1,3}(?:[,. ][0-9]{3})*|\d+\s?k)/i);
-    if (budget || /budget|cost|spend/.test(t)) {
-      const valRaw = budget ? budget[0].replace(/\s/g, '') : '$10,000';
-      const val = /k\b/i.test(valRaw) ? '$' + parseInt(valRaw.replace(/[^\d]/g, '')) * 1000 : valRaw;
-      conds.push({ id: Date.now(), conj: 'If', field: 'Budget', op: '≥', value: val.replace(/^\$/, '$').replace(/^\$(\d+)$/, (_,n)=> '$' + Number(n).toLocaleString()) });
-    }
-    const head = t.match(/(\d{2,4})\s*(people|attendees|guests|headcount)/);
-    if (head) {
-      conds.push({ id: Date.now()+1, conj: conds.length ? 'And' : 'If', field: 'Headcount', op: '≥', value: head[1] });
-    }
-    if (/client dinner/.test(t)) {
-      conds.push({ id: Date.now()+2, conj: conds.length ? 'And' : 'If', field: 'Event type', op: 'is', value: 'Client dinner' });
-    } else if (/offsite/.test(t)) {
-      conds.push({ id: Date.now()+3, conj: conds.length ? 'And' : 'If', field: 'Event type', op: 'is', value: 'Offsite' });
-    }
-    if (conds.length) next.conds = conds;
-    // Approvers
-    if (/exec|executive|ceo|cfo/.test(t)) next.admins = ['e'];
-    else if (/finance/.test(t)) next.admins = ['e', 'd'];
-    else if (/admin|approv/.test(t)) next.admins = ['e','d','r'];
-    // Fallback
-    if (/auto.?approve|auto approve/.test(t)) next.fallback = 'Auto-approve';
-    else if (/notify|alert|tell/.test(t)) next.fallback = 'Notify owner';
-    else if (/block|reject/.test(t)) next.fallback = 'Block';
-    // Name (heuristic: first 5 words capitalized)
-    if (!next.name) {
-      const cleaned = (wf.desc || '').replace(/^(when|if|whenever|every time)\s+/i, '').trim();
-      next.name = cleaned.split(/[,.]/)[0].split(/\s+/).slice(0, 7).join(' ');
-      next.name = next.name.charAt(0).toUpperCase() + next.name.slice(1);
-    }
-    setWf(next);
-    setLastFilledPrompt(wf.desc);
-    closeAll();
-  };
-
-  // ── Summary text for collapsed cards ─────────────────────
-  const trigOpt = TRIGGER_OPTS.find(o => o.id === wf.trigger);
-  const whenText = trigOpt ? trigOpt.t : '';
-  const matchText = wf.conds.length === 0 ? '' :
-    wf.conds.map((c, i) => `${i === 0 ? '' : c.conj + ' '}${c.field} ${c.op} ${c.value}`).join(' ');
-  const decideText = wf.admins.length === 0 ? '' :
-    `${wf.requireMode.replace('Require ', '')} of ${wf.admins.length} admin${wf.admins.length === 1 ? '' : 's'}`;
-  const fallbackText = wf.fallback;
-
-  // ── Examples ─────────────────────────────────────────────
-  const triggerExamples = TRIGGER_OPTS.slice(0, 3).map(o => ({ label: o.t, val: { trigger: o.id } }));
-  const matchExamples = [
-    { label: 'Budget ≥ $10k', val: { conds: [{ id: Date.now(), conj: 'If', field: 'Budget', op: '≥', value: '$10,000' }] } },
-    { label: 'Headcount ≥ 50', val: { conds: [{ id: Date.now()+1, conj: 'If', field: 'Headcount', op: '≥', value: '50' }] } },
-    { label: 'Offsite events', val: { conds: [{ id: Date.now()+2, conj: 'If', field: 'Event type', op: 'is', value: 'Offsite' }] } },
-  ];
-  const decideExamples = [
-    { label: 'Any of Emma, Dan', val: { requireMode: 'Require any', admins: ['e', 'd'] } },
-    { label: 'All execs', val: { requireMode: 'Require all', admins: ['e'] } },
-    { label: 'Finance team', val: { requireMode: 'Require any', admins: ['e','d'] } },
-  ];
-  const fallbackExamples = FALLBACK_OPTS.slice(0, 3).map(o => ({ label: o.t, val: { fallback: o.id } }));
-
-  // ── Save ─────────────────────────────────────────────────
-  const canSave = !!wf.name && !!wf.trigger;
-  const saveIt = (activate = true) => {
-    if (!canSave) return;
-    setSaved(true);
-    if (onSave) {
-      onSave({
-        id: initialPolicy?.id || ('p' + Date.now()),
-        name: wf.name || 'New policy',
-        desc: wf.desc,
-        trigger: TRIGGER_OPTS.find((t) => t.id === wf.trigger)?.t || 'Event is created',
-        guards: `${wf.conds.length} guard${wf.conds.length === 1 ? '' : 's'}`,
-        type: 'Approval guard',
-        compliance: '100% compliance',
-        on: initialPolicy ? initialPolicy.on : activate,
-        _raw: { ...wf },
+  const handleMarkPending = () => {
+    setShowConfirm(false);
+    if (onRequestSetup) {
+      onRequestSetup({
+        id: 'pending-' + Date.now(),
+        name: title,
+        desc: policy?.desc,
+        status: 'pending',
+        requestedAt: new Date().toISOString(),
+        conds: editConds,
+        notes,
+        workflow: { ...wfTemplate, conds: editConds },
       });
     }
+    onClose();
   };
 
-  const RC = window.RecipeCard;
-
-  return (
-    <div className="split solo">
-      <div className="split-right">
-        <div className="split-head">
-          <div className="crumb">
-            <span>Policies</span>
-            <I.chevron size={11} className="sep" />
-            <span className="cur">{initialPolicy ? 'Edit policy' : 'New policy'}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button className="btn outline" style={{ height: 28, fontSize: 12 }} onClick={onClose}>Cancel</button>
-            <div className="save-split" style={{ position: 'relative', display: 'inline-flex' }}>
-              <button className="btn" style={{ height: 28, fontSize: 12, opacity: canSave ? 1 : 0.4, pointerEvents: canSave ? 'auto' : 'none', borderTopRightRadius: 0, borderBottomRightRadius: 0, paddingRight: 10 }}
-                onClick={() => saveIt(true)}>
-                <I.save size={12} /> {saved ? 'Saved' : 'Save'}
-              </button>
-              <button className="btn" style={{ height: 28, fontSize: 12, opacity: canSave ? 1 : 0.4, pointerEvents: canSave ? 'auto' : 'none', borderTopLeftRadius: 0, borderBottomLeftRadius: 0, paddingLeft: 6, paddingRight: 6, marginLeft: 1, borderLeft: '1px solid rgba(255,255,255,.25)' }}
-                onClick={(e) => { e.stopPropagation(); setOpenMenu(m => m === 'savemenu' ? null : 'savemenu'); }}
-                aria-label="Save options">
-                <I.chevronDown size={11} />
-              </button>
-              {openMenu === 'savemenu' && (
-                <div className="dd-menu" style={{ left: 'auto', right: 0, top: 'calc(100% + 4px)', minWidth: 200, padding: 4 }}>
-                  <div className="dd-item" onClick={(e) => { e.stopPropagation(); setOpenMenu(null); saveIt(true); }}
-                    style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 10px' }}>
-                    <div style={{ font: '500 12.5px/1.2 var(--font-sans)' }}>{initialPolicy ? 'Save changes' : 'Save & activate'}</div>
-                    <div style={{ font: '400 11px/1.3 var(--font-sans)', color: 'var(--muted-foreground)' }}>Enforce immediately on new events</div>
-                  </div>
-                  <div className="dd-item" onClick={(e) => { e.stopPropagation(); setOpenMenu(null); saveIt(false); }}
-                    style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 10px' }}>
-                    <div style={{ font: '500 12.5px/1.2 var(--font-sans)' }}>Save as draft</div>
-                    <div style={{ font: '400 11px/1.3 var(--font-sans)', color: 'var(--muted-foreground)' }}>Keep editing — won't enforce yet</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="rt-solo" onClick={() => setOpenMenu(null)}>
-          <div className="pref rt-solo-body rt-recipe">
-            {/* Templates strip */}
-            <div className="rt-tpl-top">
-              <div className="rt-tpl-top-head">
-                <div className="rt-tpl-top-label">Start from a template</div>
-                <div className="rt-tpl-nav">
-                  <button type="button" className="rt-tpl-nav-btn" aria-label="Previous"
-                    onClick={(e) => { const r = e.currentTarget.closest('.rt-tpl-top').querySelector('.rt-tpl-scroll'); r && r.scrollBy({ left: -260, behavior: 'smooth' }); }}>
-                    <I.chevron size={12} style={{transform: 'rotate(180deg)'}} />
-                  </button>
-                  <button type="button" className="rt-tpl-nav-btn" aria-label="Next"
-                    onClick={(e) => { const r = e.currentTarget.closest('.rt-tpl-top').querySelector('.rt-tpl-scroll'); r && r.scrollBy({ left: 260, behavior: 'smooth' }); }}>
-                    <I.chevron size={12} />
-                  </button>
-                </div>
-              </div>
-              <div className="rt-tpl-scroll">
-                {TPLS.map((t, i) => {
-                  const isActive = activeTemplate && activeTemplate.title === t.title;
-                  return (
-                    <button key={i} type="button" className={`rt-tpl ${isActive ? 'active' : ''}`} onClick={() => applyTemplate(t)}>
-                      <div className="rt-tpl-ico"><t.icon size={14} /></div>
-                      <div className="rt-tpl-text">
-                        <div className="rt-tpl-title">{t.title}</div>
-                        <div className="rt-tpl-desc">{t.desc}</div>
-                      </div>
-                      {isActive && <div className="rt-tpl-check"><I.check size={11} /></div>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="rt-hr" />
-
-            {/* Name + anatomy */}
-            <div className="rt-name-block">
-              <input value={wf.name} onChange={(e) => set({ name: e.target.value })}
-                ref={nameRef}
-                placeholder="Untitled policy"
-                className="rt-name-input"
-                onClick={(e) => e.stopPropagation()} />
-              <div className="rt-anatomy">
-                A policy fires on a <b>trigger</b>, evaluates <b>conditions</b>, then routes the <b>decision</b> — with a <b>fallback</b> if none match.
-              </div>
-            </div>
-
-            {/* Prompt + send → magic-fill */}
-            <div className={`rt-prompt ${activeTemplate ? 'has-tpl' : ''}`}>
-              {activeTemplate && (
-                <div className="rt-prompt-tpl">
-                  <div className="rt-prompt-tpl-ico"><activeTemplate.icon size={11} /></div>
-                  <span className="rt-prompt-tpl-label">Filled from template</span>
-                  <span className="rt-prompt-tpl-name">{activeTemplate.title}</span>
-                  <button type="button" className="rt-prompt-tpl-reset" onClick={resetForm}>
-                    <I.close size={10} /> Reset
-                  </button>
-                </div>
-              )}
-              <div className="rt-prompt-input">
-                <I.sparkle size={13} className="rt-prompt-spark" />
-                <textarea className="rt-magic-input" value={wf.desc}
-                  onChange={(e) => set({ desc: e.target.value })}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => {
-                    if ((e.key === 'Enter' && (e.metaKey || e.ctrlKey)) || (e.key === 'Enter' && !e.shiftKey)) {
-                      e.preventDefault();
-                      if (wf.desc.trim() && wf.desc.trim() !== lastFilledPrompt.trim()) magicFill();
-                    }
-                  }}
-                  rows={2}
-                  placeholder="Describe your policy — e.g. 'Require approval for events over $20k'" />
-                <button type="button" className="rt-prompt-send"
-                  disabled={!wf.desc.trim() || wf.desc.trim() === lastFilledPrompt.trim()}
-                  onClick={magicFill}
-                  aria-label="Generate policy">
-                  <I.arrowUp size={13} />
-                </button>
-              </div>
-              <div className="rt-prompt-hint">Press Enter to populate the fields below — or fill them yourself.</div>
-            </div>
-
-            {/* Recipe cards — always on the surface */}
-            <div className="rt-recipe-list">
-              <div className="rc static filled">
-                <div className="rc-head">
-                  <div className="rc-ico"><I.bolt size={14} /></div>
-                  <div className="rc-h-text">
-                    <div className="rc-label">When it fires</div>
-                  </div>
-                  <div className="rc-h-aside">
-                    {triggerExamples.slice(0, 2).map((ex, i) => (
-                      <button key={i} type="button" className="rc-ex-chip" onClick={() => set(ex.val)}>{ex.label}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="rc-body">
-                  <TriggerPicker value={wf.trigger} onChange={(id) => set({ trigger: id })}
-                    open={openMenu === 'trig'}
-                    toggle={(e) => { e.stopPropagation(); setOpenMenu(m => m === 'trig' ? null : 'trig'); }} />
-                </div>
-              </div>
-
-              <div className="rc static filled">
-                <div className="rc-head">
-                  <div className="rc-ico"><I.shieldCheck size={14} /></div>
-                  <div className="rc-h-text">
-                    <div className="rc-label">What it checks</div>
-                  </div>
-                  <div className="rc-h-aside">
-                    {matchExamples.slice(0, 2).map((ex, i) => (
-                      <button key={i} type="button" className="rc-ex-chip" onClick={() => set(ex.val)}>{ex.label}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="rc-body">
-                  <div className="conds" style={{ background: '#fff', boxShadow: 'inset 0 0 0 1px var(--border)', borderRadius: 10, padding: 10 }}>
-                  {wf.conds.length === 0 && (
-                    <div style={{ font: '400 12px/1.4 var(--font-sans)', color: 'var(--muted-foreground)', padding: '4px 4px 8px' }}>
-                      No conditions yet — this policy will fire on every event matching the trigger. Add a condition to narrow it down.
-                    </div>
-                  )}
-                  {wf.conds.map((c, i) => (
-                    <div key={c.id} className="cond-row">
-                      <Dropdown className={`sel ${i === 0 ? 'op' : 'conj'}`}
-                        value={c.conj} options={i === 0 ? ['If'] : CONJ_OPTS}
-                        onChange={(v) => setWf(w => ({ ...w, conds: w.conds.map((x,j) => j===i ? {...x, conj: v} : x) }))}
-                        openKey={`conj-${i}`} openMenu={openMenu} setOpenMenu={setOpenMenu} />
-                      <Dropdown className="sel"
-                        value={c.field} options={FIELD_OPTS}
-                        onChange={(v) => setWf(w => ({ ...w, conds: w.conds.map((x,j) => j===i ? {...x, field: v} : x) }))}
-                        openKey={`field-${i}`} openMenu={openMenu} setOpenMenu={setOpenMenu} />
-                      <Dropdown className="sel op"
-                        value={c.op} options={c.field === 'Event type' || c.field === 'Location' || c.field === 'Vendor' ? ['is', 'is not'] : OP_OPTS}
-                        onChange={(v) => setWf(w => ({ ...w, conds: w.conds.map((x,j) => j===i ? {...x, op: v} : x) }))}
-                        openKey={`op-${i}`} openMenu={openMenu} setOpenMenu={setOpenMenu} />
-                      {c.field === 'Event type' ? (
-                        <Dropdown className="sel num-input"
-                          value={c.value} options={TYPE_OPTS}
-                          onChange={(v) => setWf(w => ({ ...w, conds: w.conds.map((x,j) => j===i ? {...x, value: v} : x) }))}
-                          openKey={`val-${i}`} openMenu={openMenu} setOpenMenu={setOpenMenu} hideChev />
-                      ) : (
-                        <input className="sel num-input"
-                          style={{ border: 'none', outline: 'none', background: 'transparent', flex: '1 1 auto', minWidth: 0, font: '400 12.5px/1 var(--font-sans)' }}
-                          value={c.value}
-                          onChange={(e) => setWf(w => ({ ...w, conds: w.conds.map((x,j) => j===i ? {...x, value: e.target.value} : x) }))}
-                          onClick={(e) => e.stopPropagation()} />
-                      )}
-                      {wf.conds.length > 0 && (
-                        <button className="cond-x" onClick={(e) => { e.stopPropagation(); setWf(w => ({ ...w, conds: w.conds.filter((_,j) => j !== i) })); }}
-                          title="Remove">
-                          <I.close size={10} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button className="add-cond" onClick={(e) => { e.stopPropagation();
-                    setWf(w => ({ ...w, conds: [...w.conds, { id: Date.now(), conj: w.conds.length === 0 ? 'If' : 'And', field: 'Headcount', op: '≥', value: '50' }] }));
-                  }}><I.plus size={11} /> Add condition</button>
-                </div>
-                </div>
-              </div>
-
-              <div className="rc static filled">
-                <div className="rc-head">
-                  <div className="rc-ico"><I.shield size={14} /></div>
-                  <div className="rc-h-text">
-                    <div className="rc-label">Who decides</div>
-                  </div>
-                  <div className="rc-h-aside">
-                    {decideExamples.slice(0, 2).map((ex, i) => (
-                      <button key={i} type="button" className="rc-ex-chip" onClick={() => set(ex.val)}>{ex.label}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="rc-body">
-                  <div className="cond-row" style={{ background: '#fff', boxShadow: 'inset 0 0 0 1px var(--border)', borderRadius: 10, padding: 8 }}>
-                    <Dropdown className="sel" style={{ flex: '1 1 auto' }}
-                      value={wf.requireMode} options={['Require any', 'Require all', 'Require majority']}
-                      onChange={(v) => set({ requireMode: v })}
-                      openKey="req" openMenu={openMenu} setOpenMenu={setOpenMenu} />
-                    <span style={{ font: '400 12.5px/1 var(--font-sans)', color: 'var(--muted-foreground)' }}>of</span>
-                    <AdminPicker admins={wf.admins} setAdmins={(a) => set({ admins: a })}
-                      open={openMenu === 'adm'}
-                      toggle={(e) => { e.stopPropagation(); setOpenMenu(m => m === 'adm' ? null : 'adm'); }} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="rc static filled">
-                <div className="rc-head">
-                  <div className="rc-ico"><I.alert size={14} /></div>
-                  <div className="rc-h-text">
-                    <div className="rc-label">Otherwise</div>
-                  </div>
-                  <div className="rc-h-aside">
-                    {fallbackExamples.slice(0, 2).map((ex, i) => (
-                      <button key={i} type="button" className="rc-ex-chip" onClick={() => set(ex.val)}>{ex.label}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="rc-body">
-                  <FallbackPicker value={wf.fallback} onChange={(v) => set({ fallback: v })}
-                    open={openMenu === 'fb'}
-                    toggle={(e) => { e.stopPropagation(); setOpenMenu(m => m === 'fb' ? null : 'fb'); }} />
-                </div>
-              </div>
-            </div>
-
-            {/* Outcome */}
-            <div className={`wf-outcome ${canSave ? 'pos' : ''}`} style={{ marginTop: 8 }}>
-              <div className="ico">{canSave ? <I.check size={14} /> : <I.clock size={14} />}</div>
-              <div className="bd">
-                <div className="t">{canSave ? 'Policy is ready to enforce' : 'Add a name and trigger to continue'}</div>
-                {canSave && <div className="d" style={{ font: '400 12px/1.3 var(--font-sans)', color: 'var(--muted-foreground)', marginTop: 2 }}>
-                  Once active, every {trigOpt?.t.toLowerCase()} will be evaluated against this policy.
-                </div>}
-              </div>
-              <I.info size={12} className="chev" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>);
-
-}
-
-// Generic dropdown used inside condition rows
-function Dropdown({ className, style, value, options, onChange, openKey, openMenu, setOpenMenu, hideChev }) {
-  const open = openMenu === openKey;
-  return (
-    <div className={className} style={{ ...style, position: 'relative', cursor: 'pointer' }}
-    onClick={(e) => {e.stopPropagation();setOpenMenu(open ? null : openKey);}}>
-      <span>{value}</span>
-      {!hideChev && <I.chevronDown size={10} />}
-      {open &&
-      <div className="dd-menu">
-          {options.map((o) =>
-        <div key={o} className={`dd-item ${o === value ? 'sel' : ''}`}
-        onClick={(e) => {e.stopPropagation();onChange(o);setOpenMenu(null);}}>
-              {o}
-            </div>
-        )}
-        </div>
-      }
-    </div>);
-
-}
-
-function TriggerPicker({ value, onChange, open, toggle }) {
-  const current = TRIGGER_OPTS.find((t) => t.id === value) || TRIGGER_OPTS[0];
-  const Ico = current.icon;
-  return (
-    <div style={{ position: 'relative' }}>
-      <div className="wf-trigger" style={{ cursor: 'pointer' }} onClick={toggle}>
-        <div className="ico"><Ico size={14} /></div>
-        <div className="bd">
-          <div className="t">{current.t}</div>
-          <div className="d">{current.d}</div>
-        </div>
-        <I.chevronDown size={12} style={{ color: 'var(--muted-foreground)' }} />
-      </div>
-      {open &&
-      <div className="dd-menu" style={{ left: 0, right: 0, top: 'calc(100% + 4px)', minWidth: 0, padding: 4 }}>
-          {TRIGGER_OPTS.map((t) => {
-          const Tco = t.icon;
-          return (
-            <div key={t.id} className={`dd-item ${t.id === value ? 'sel' : ''}`}
-            style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px' }}
-            onClick={(e) => {e.stopPropagation();onChange(t.id);toggle(e);}}>
-                <Tco size={14} />
-                <div>
-                  <div style={{ font: '500 12.5px/1.1 var(--font-sans)' }}>{t.t}</div>
-                  <div style={{ font: '400 11px/1.3 var(--font-sans)', color: 'var(--muted-foreground)' }}>{t.d}</div>
-                </div>
-              </div>);
-
-        })}
-        </div>
-      }
-    </div>);
-
-}
-
-function AdminPicker({ admins, setAdmins, open, toggle }) {
-  const sel = ADMINS.filter((a) => admins.includes(a.id));
-  const toggleAdmin = (id) => {
-    setAdmins(admins.includes(id) ? admins.filter((x) => x !== id) : [...admins, id]);
+  const handleContactDylan = () => {
+    const name = title;
+    const subject = `Policy change request: ${name}`;
+    const body = `Hi Dylan,\n\nI'd like to discuss some adjustments to the "${name}" policy.\n\nCould you please reach out?\n\nThanks`;
+    window.open(`mailto:dylan@planned.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_self');
   };
-  return (
-    <div className="sel" style={{ flex: '1 1 auto', display: 'flex', gap: 6, justifyContent: 'flex-start', position: 'relative', cursor: 'pointer' }} onClick={toggle}>
-      <div className="avatar-pile">
-        {sel.slice(0, 4).map((a) =>
-        <div key={a.id} className="av" style={{ background: a.color }}>{a.initial}</div>
-        )}
-        {sel.length > 4 && <div className="av more">+{sel.length - 4}</div>}
-      </div>
-      <span>{sel.length} admin{sel.length === 1 ? '' : 's'}</span>
-      <I.chevronDown size={10} style={{ marginLeft: 'auto', color: 'var(--muted-foreground)' }} />
-      {open &&
-      <div className="dd-menu" style={{ left: 0, right: 0, top: 'calc(100% + 4px)', minWidth: 0, padding: 4 }}>
-          {ADMINS.map((a) =>
-        <div key={a.id} className="dd-item"
-        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-        onClick={(e) => {e.stopPropagation();toggleAdmin(a.id);}}>
-              <div className="av" style={{ width: 18, height: 18, background: a.color, color: '#fff', font: '500 10px/1 var(--font-sans)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{a.initial}</div>
-              <span style={{ flex: 1 }}>{a.name}</span>
-              <span className="check-box" style={{ width: 14, height: 14, borderRadius: 3, border: '1px solid var(--border)', background: admins.includes(a.id) ? 'var(--action-primary)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {admins.includes(a.id) && <I.check size={9} style={{ color: '#fff' }} />}
-              </span>
-            </div>
-        )}
-        </div>
-      }
-    </div>);
 
-}
+  const handleFollowUp = () => {
+    const subject = `Following up: ${title} policy setup`;
+    const body = `Hi Dylan,\n\nJust following up on my request to set up the "${title}" policy. Could you give me a status update?\n\nThanks`;
+    window.open(`mailto:dylan@planned.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_self');
+  };
 
-const FALLBACK_OPTS = [
-{ id: 'Auto-approve', icon: I.shieldCheck, d: 'Agent proceeds autonomously without blocking' },
-{ id: 'Notify owner', icon: I.bell, d: 'Let the event owner know — proceed regardless' },
-{ id: 'Block', icon: I.shield, d: 'Halt sourcing until manually resolved' },
-{ id: 'Do nothing', icon: I.sparkle, d: 'Policy is informational only' }];
-
-
-function FallbackPicker({ value, onChange, open, toggle }) {
-  const cur = FALLBACK_OPTS.find((o) => o.id === value) || FALLBACK_OPTS[0];
-  const Ico = cur.icon;
-  const triggerRef = window.React.useRef(null);
-  const [flipUp, setFlipUp] = useStateP(false);
-  window.React.useEffect(() => {
-    if (open && triggerRef.current) {
-      const r = triggerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - r.bottom;
-      // Need ~260px for the menu; flip up if not enough room
-      setFlipUp(spaceBelow < 260);
-    }
-  }, [open]);
-  return (
-    <div style={{ position: 'relative' }} ref={triggerRef}>
-      <div className="wf-outcome" style={{ cursor: 'pointer' }} onClick={toggle}>
-        <div className="ico" style={{ background: 'var(--action-subtle)', color: 'var(--action-primary)' }}><Ico size={14} /></div>
-        <div className="bd">
-          <div className="t">{cur.id}</div>
-          <div className="d">{cur.d}</div>
-        </div>
-        <I.chevronDown size={12} className="chev" />
-      </div>
-      {open &&
-      <div className="dd-menu" style={{ left: 0, right: 0, ...(flipUp ? { bottom: 'calc(100% + 4px)', top: 'auto', transformOrigin: 'bottom left' } : { top: 'calc(100% + 4px)' }), minWidth: 0, padding: 4 }}>
-          {FALLBACK_OPTS.map((o) => {
-          const Oi = o.icon;
-          return (
-            <div key={o.id} className={`dd-item ${o.id === value ? 'sel' : ''}`}
-            style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px' }}
-            onClick={(e) => {e.stopPropagation();onChange(o.id);toggle(e);}}>
-                <Oi size={14} />
-                <div>
-                  <div style={{ font: '500 12.5px/1.1 var(--font-sans)' }}>{o.id}</div>
-                  <div style={{ font: '400 11px/1.3 var(--font-sans)', color: 'var(--muted-foreground)' }}>{o.d}</div>
-                </div>
-              </div>);
-
-        })}
-        </div>
-      }
-    </div>);
-
-}
-
-// Detail flyout (right-side sheet) — used for BOTH active + suggested
-function PolicyDetailFlyout({ onClose, onEdit, mode = 'active', policy }) {
-  const isSuggested = mode === 'suggested';
-  const [menuOpen, setMenuOpen] = useStateP(false);
-  const title = policy?.title || policy?.name || 'Planned approval for large events';
-  const desc = isSuggested ?
-  policy?.desc || 'A recommended guardrail based on your event history. Preview the workflow below — create it to start enforcing.' :
-  'When an event is created with a budget of $20,000 or more, require any admin to approve before sourcing begins. Otherwise, the agent auto-approves.';
+  // Workflow to display (use stored workflow for pending)
+  const displayWorkflow = isPending && policy?.workflow
+    ? policy.workflow
+    : wfTemplate;
 
   return (
     <>
@@ -10745,54 +10204,34 @@ function PolicyDetailFlyout({ onClose, onEdit, mode = 'active', policy }) {
         <div className="flyout-head">
           <div className="top">
             <div style={{ flex: 1 }}>
-              {isSuggested &&
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, font: '400 11px/1 var(--font-sans)', color: 'var(--action-primary)', background: 'var(--action-subtle)', padding: '4px 8px', borderRadius: 5, marginBottom: 8 }}>
+              {isSuggested && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, font: '400 11px/1 var(--font-sans)', color: 'var(--action-primary)', background: 'var(--action-subtle)', padding: '4px 8px', borderRadius: 5, marginBottom: 8 }}>
                   <span>✦</span> Suggested
                 </div>
-              }
+              )}
+              {isPending && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: '500 10.5px/1 var(--font-sans)', color: 'var(--warning-primary)', background: 'var(--warning-subtle)', padding: '4px 10px', borderRadius: 5, marginBottom: 8, letterSpacing: '0.04em' }}>
+                  <I.clock size={11} /> PENDING SETUP
+                </div>
+              )}
               <h2>{title}</h2>
             </div>
-            <div className="act" style={{ position: 'relative' }}>
-              {!isSuggested &&
-              <button className="ellipsis-btn" onClick={(e) => {e.stopPropagation();setMenuOpen((o) => !o);}}>
-                  <I.dots size={15} />
-                </button>
-              }
-              <button className="ellipsis-btn" onClick={onClose}><I.close size={15} /></button>
-              {menuOpen && !isSuggested &&
-              <>
-                  <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMenuOpen(false)} />
-                  <div className="dd-menu" style={{ right: 34, top: 28, left: 'auto', minWidth: 140, zIndex: 41 }}>
-                    <div className="dd-item" onClick={() => setMenuOpen(false)}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><I.copy size={12} /> Duplicate</span></div>
-                    <div className="dd-item" onClick={() => setMenuOpen(false)} style={{ color: 'var(--alert-primary)' }}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><I.close size={12} /> Delete</span></div>
-                  </div>
-                </>
-              }
-            </div>
+            <button className="ellipsis-btn" onClick={onClose}><I.close size={15} /></button>
           </div>
-          <div className="desc">{desc}</div>
+          <div className="desc">
+            {isSuggested
+              ? policy?.desc || 'A recommended guardrail based on your event history. Review the workflow below — adjust any values and request setup from Dylan.'
+              : isPending
+              ? `Requested ${formatRelative(policy?.requestedAt)}. Dylan will configure and activate this policy.`
+              : 'When an event is created with a budget of $20,000 or more, require any admin to approve before sourcing begins.'
+            }
+          </div>
         </div>
+
         <div className="flyout-body">
-          {!isSuggested &&
-          <div className="metric-card-grid fly-kpis" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              <div className="metric-card">
-                <div className="metric-title">Triggered</div>
-                <div className="metric-value-row">
-                  <span className="metric-value">14</span>
-                  <span className="mc-badge positive">+45</span>
-                </div>
-              </div>
-              <div className="metric-card">
-                <div className="metric-title">Compliance</div>
-                <div className="metric-value-row">
-                  <span className="metric-value">100%</span>
-                  <span className="mc-badge positive">+45</span>
-                </div>
-              </div>
-            </div>
-          }
-          {isSuggested &&
-          <div className="metric-card-grid fly-kpis" style={{ gridTemplateColumns: '1fr 1fr' }}>
+          {/* Impact / stats */}
+          {isSuggested && (
+            <div className="metric-card-grid fly-kpis" style={{ gridTemplateColumns: '1fr 1fr' }}>
               <div className="metric-card">
                 <div className="metric-title">Projected impact</div>
                 <div className="metric-value-row">
@@ -10808,109 +10247,115 @@ function PolicyDetailFlyout({ onClose, onEdit, mode = 'active', policy }) {
                 </div>
               </div>
             </div>
-          }
+          )}
+          {isActive && (
+            <div className="metric-card-grid fly-kpis" style={{ gridTemplateColumns: '1fr 1fr' }}>
+              <div className="metric-card">
+                <div className="metric-title">Triggered</div>
+                <div className="metric-value-row">
+                  <span className="metric-value">14</span>
+                  <span className="mc-badge positive">+45</span>
+                </div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-title">Compliance</div>
+                <div className="metric-value-row">
+                  <span className="metric-value">100%</span>
+                  <span className="mc-badge positive">+45</span>
+                </div>
+              </div>
+            </div>
+          )}
 
+          {/* Workflow */}
           <div>
-            <div className="wf-sec-label" style={{ display: 'inline-flex', padding: '3px 8px', background: 'var(--muted)', borderRadius: 5, color: 'var(--foreground)' }}>Workflow</div>
-            <div className="wf" style={{ padding: '12px 0 0' }}>
-              <div className="wf-trigger">
-                <div className="ico"><I.calendar size={14} /></div>
-                <div className="bd">
-                  <div className="t">Event is created</div>
-                  <div className="d">Any new event in the workspace</div>
-                </div>
-                <I.info size={12} style={{ color: 'var(--muted-foreground)' }} />
-              </div>
-
-              <div className="wf-step">
-                <div className="num">1</div>
-                <div className="conds">
-                  <div className="cond-row">
-                    <div className="sel op">If <I.chevronDown size={10} /></div>
-                    <div className="sel">Budget <I.chevronDown size={10} /></div>
-                    <div className="sel op">≥ <I.chevronDown size={10} /></div>
-                    <div className="sel num-input">$20,000</div>
-                  </div>
-                  <div className="cond-row">
-                    <div className="sel conj">And <I.chevronDown size={10} /></div>
-                    <div className="sel">Event type <I.chevronDown size={10} /></div>
-                    <div className="sel op">is <I.chevronDown size={10} /></div>
-                    <div className="sel num-input">Offsite</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="wf-step">
-                <div className="num">2</div>
-                <div className="conds">
-                  <div className="cond-row">
-                    <div className="sel" style={{ flex: '1 1 auto' }}>Require any <I.chevronDown size={10} /></div>
-                    <span style={{ font: '400 12.5px/1 var(--font-sans)', color: 'var(--muted-foreground)' }}>of</span>
-                    <div className="sel" style={{ flex: '1 1 auto', gap: 6 }}>
-                      <div className="avatar-pile">
-                        <div className="av" style={{ background: 'var(--decorative-lavender-600)' }}>E</div>
-                        <div className="av" style={{ background: 'var(--decorative-butterfly-pea-600)' }}>D</div>
-                        <div className="av" style={{ background: 'var(--decorative-mint-600)' }}>R</div>
-                        <div className="av" style={{ background: 'var(--decorative-champagne-600)' }}>S</div>
-                        <div className="av more">+1</div>
-                      </div>
-                      <span>5 admins</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="wf-outcome">
-                <div className="ico" style={{ background: 'var(--action-subtle)', color: 'var(--action-primary)' }}><I.shieldCheck size={14} /></div>
-                <div className="bd">
-                  <div className="t">Auto-approve</div>
-                  <div className="d">Agent proceeds autonomously without blocking</div>
-                </div>
-              </div>
-
-              <div className="wf-outcome pos">
-                <div className="ico"><I.check size={14} /></div>
-                <div className="bd">
-                  <div className="t">Policy is enforced</div>
-                </div>
-                <I.info size={12} className="chev" />
-              </div>
+            <div className="wf-sec-label" style={{ display: 'inline-flex', padding: '3px 8px', background: 'var(--muted)', borderRadius: 5, color: 'var(--foreground)', alignItems: 'center', gap: 6 }}>
+              Workflow
+              {isSuggested && (
+                <span style={{ font: '400 10.5px/1 var(--font-sans)', color: 'var(--muted-foreground)' }}>
+                  — edit values to customize
+                </span>
+              )}
             </div>
+            <WorkflowView
+              workflow={displayWorkflow}
+              editConds={isSuggested ? editConds : undefined}
+              setEditConds={isSuggested ? setEditConds : undefined}
+            />
           </div>
+
+          {/* Notes for Dylan — suggested only */}
+          {isSuggested && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ font: '500 11px/1 var(--font-sans)', color: 'var(--muted-foreground)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                Notes for Dylan
+              </div>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                onClick={e => e.stopPropagation()}
+                placeholder="Any specific adjustments or context for Dylan to know…"
+                rows={3}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px',
+                  font: '400 13px/1.5 var(--font-sans)', color: 'var(--foreground)',
+                  background: '#fff', resize: 'none', outline: 'none',
+                  fontFamily: 'var(--font-sans)',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Pending notes display */}
+          {isPending && policy?.notes && (
+            <div style={{ marginTop: 16, padding: '10px 12px', background: 'var(--muted)', borderRadius: 8 }}>
+              <div style={{ font: '500 11px/1 var(--font-sans)', color: 'var(--muted-foreground)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Your notes</div>
+              <div style={{ font: '400 13px/1.5 var(--font-sans)', color: 'var(--foreground)' }}>{policy.notes}</div>
+            </div>
+          )}
         </div>
-        {!isSuggested &&
-        <div className="sugg-banner">
-            <span className="ico">✦</span>
-            <div className="bd">
-              <b>Suggestion</b>
-              <span>All $20k-$25k events were approved without changes in the last 30 days. Consider raising the threshold to $25k to cut review overhead by ~34%.</span>
-            </div>
-            <button className="close"><I.close size={11} /></button>
-            <button className="yes"><I.check size={11} /></button>
-          </div>
-        }
-        <div className="flyout-foot">
-          {isSuggested ?
-          <>
-              <button className="btn outline" style={{ width: '100%' }} onClick={onClose}>Dismiss</button>
-              <button className="btn" style={{ width: '100%' }} onClick={onEdit}><I.plus size={12} /> Create policy</button>
-            </> :
 
-          <>
-              <button className="btn outline" style={{ width: '100%' }} onClick={onClose}>Close</button>
-              <button className="btn" style={{ width: '100%' }} onClick={onEdit}><I.edit size={12} /> Edit policy</button>
-            </>
-          }
+        {/* Footer */}
+        <div className="flyout-foot">
+          {isSuggested && <>
+            <button className="btn outline" style={{ width: '100%' }} onClick={onClose}>Dismiss</button>
+            <button className="btn" style={{ width: '100%' }} onClick={handleRequestSetup}>
+              <I.email size={13} /> Request setup
+            </button>
+          </>}
+          {isPending && <>
+            <button className="btn outline" style={{ width: '100%', color: 'var(--muted-foreground)' }}
+              onClick={() => { if (onCancelPending) onCancelPending(policy.id); onClose(); }}>
+              Cancel request
+            </button>
+            <button className="btn" style={{ width: '100%' }} onClick={handleFollowUp}>
+              <I.email size={13} /> Follow up with Dylan
+            </button>
+          </>}
+          {isActive && <>
+            <button className="btn outline" style={{ width: '100%' }} onClick={onClose}>Close</button>
+            <button className="btn outline" style={{ width: '100%' }} onClick={handleContactDylan}>
+              <I.email size={13} /> Contact Dylan
+            </button>
+          </>}
         </div>
       </div>
-    </>);
 
+      {showConfirm && (
+        <PendingConfirmModal
+          onNotYet={() => setShowConfirm(false)}
+          onMarkPending={handleMarkPending}
+        />
+      )}
+    </>
+  );
 }
 
 window.PoliciesLanding = PoliciesLanding;
-window.PoliciesChat = PoliciesChat;
 window.PolicyDetailFlyout = PolicyDetailFlyout;
 window.Sparkline = Sparkline;
+
 </script></script>
   <script type="text/babel">
 // Insights screen - live interactive chart
@@ -14871,6 +14316,11 @@ function App() {
   });
   useEffectA(() => { try { localStorage.setItem('app_routines', JSON.stringify(routines)); } catch (e) {} }, [routines]);
   useEffectA(() => { try { localStorage.setItem('app_policies', JSON.stringify(policies)); } catch (e) {} }, [policies]);
+  const [pendingPolicies, setPendingPolicies] = useStateA(() => {
+    try { const v = localStorage.getItem('pending_policies'); if (v) return JSON.parse(v); } catch (e) {}
+    return [];
+  });
+  useEffectA(() => { try { localStorage.setItem('pending_policies', JSON.stringify(pendingPolicies)); } catch (e) {} }, [pendingPolicies]);
   const [detailOpen, setDetailOpen] = useStateA(false);
   const [openRoutine, setOpenRoutine] = useStateA(null);
   const [collapsed, setCollapsed] = useStateA(false);
@@ -14934,7 +14384,7 @@ function App() {
   };
 
   const routineSection = false;
-  const inChatMode = isAdmin && adminSection === 'policies' && view === 'chat';
+  const inChatMode = isHome && homeSection === 'home-routines' && view === 'chat';
 
   // ========== Build body ==========
   let body = null;
@@ -15006,27 +14456,14 @@ function App() {
       </div>;
 
   } else if (adminSection === 'policies') {
-    if (view === 'chat') {
-      body = <PoliciesChat onClose={() => {setView('landing'); window.__editingPolicy = null;}}
-      initialPolicy={window.__editingPolicy}
-      onSave={(p) => {
-        setPolicies((ps) => {
-          const idx = ps.findIndex(x => x.id === p.id);
-          if (idx >= 0) { const next = [...ps]; next[idx] = p; return next; }
-          return [p, ...ps];
-        });
-        window.__editingPolicy = null;
-        setView('landing');
-      }} />;
-    } else {
-      body = <PoliciesLanding
-        policies={policies}
-        togglePolicy={togglePolicy}
-        openDetail={(id) => {const p = policies.find((x) => x.id === id);setDetailPolicy({ mode: 'active', policy: p });setDetailOpen(true);}}
-        openSuggested={(p) => {setDetailPolicy({ mode: 'suggested', policy: p });setDetailOpen(true);}}
-        goInsights={() => {setAdminSection('insights');setView('landing');}}
-        openChat={() => setView('chat')} />;
-    }
+    body = <PoliciesLanding
+      policies={policies}
+      pendingPolicies={pendingPolicies}
+      togglePolicy={togglePolicy}
+      openDetail={(id) => {const p = policies.find((x) => x.id === id);setDetailPolicy({ mode: 'active', policy: p });setDetailOpen(true);}}
+      openSuggested={(p) => {setDetailPolicy({ mode: 'suggested', policy: p });setDetailOpen(true);}}
+      openPending={(p) => {setDetailPolicy({ mode: 'pending', policy: p });setDetailOpen(true);}}
+      goInsights={() => {setAdminSection('insights');setView('landing');}} />;
   } else if (adminSection === 'insights') {
     body = <Insights onAskAI={askAI} onOpenSuggested={(s) => setSuggestedAction(s)} />;
   } else if (adminSection === 'users') {
@@ -15212,11 +14649,7 @@ function App() {
           minimizeMode={false}
           showSidebarToggle={!collapsed && !showSideChat}
           title={adminPageHead && adminPageHead.title}
-          right={!isHome && adminSection === 'policies' ?
-          <button className="btn" style={{ height: 28, fontSize: 12 }} onClick={() => setView('chat')}>
-              <I.plus size={12} /> New policy
-            </button> :
-          !isHome && adminSection === 'insights' ?
+          right={!isHome && adminSection === 'insights' ?
           <>
               <button className="btn outline" style={{ height: 28, fontSize: 12 }}>
                 <I.filter size={12} /> Filters
@@ -15257,12 +14690,18 @@ function App() {
         </button>
       }
 
-      {detailOpen && !isHome && adminSection === 'policies' && view !== 'chat' &&
+      {detailOpen && !isHome && adminSection === 'policies' &&
       <PolicyDetailFlyout
         mode={detailPolicy?.mode || 'active'}
         policy={detailPolicy?.policy}
         onClose={() => setDetailOpen(false)}
-        onEdit={() => {window.__editingPolicy = detailPolicy?.policy; setDetailOpen(false);setView('chat');}} />
+        onRequestSetup={(newPending) => {
+          setPendingPolicies(prev => [newPending, ...prev]);
+          setDetailOpen(false);
+        }}
+        onCancelPending={(id) => {
+          setPendingPolicies(prev => prev.filter(p => p.id !== id));
+        }} />
       }
 
       {openRoutine && isHome && homeSection === 'home-routines' &&
