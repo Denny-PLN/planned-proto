@@ -8673,7 +8673,16 @@ function Sidebar({ mode, setMode, section, setSection, collapsed, onToggle, focu
         {/* ── Header ── */}
         <SidebarHeader>
           {collapsed ? (
-            <SidebarTrigger />
+            <>
+              <SidebarTrigger />
+              {onOpenAIChat && (
+                <button className="sb-mi sb-mi-icon" onClick={onOpenAIChat}
+                  aria-label="Open AI chat" title="Open AI chat"
+                  style={{ width: 34, height: 34, margin: '1px auto' }}>
+                  <I.aiChat size={16} />
+                </button>
+              )}
+            </>
           ) : (
             <>
               <div className="sb-team-wrap">
