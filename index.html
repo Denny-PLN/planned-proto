@@ -4297,7 +4297,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 .sb-root[data-state="collapsed"] { padding: 6px 8px; }
 
 /* Header */
-.sb-header { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; padding: 0 0 4px; }
+.sb-header { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; padding: 0 0 4px; }
 
 /* Header buttons: same look as sb-mi nav items, icon-only */
 .sb-mi-icon {
@@ -4556,6 +4556,13 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 .sb-rail:hover::after { background: var(--border); }
 .sb-root[data-state="collapsed"] .sb-rail { cursor: e-resize; }
 .sb-root[data-state="expanded"] .sb-rail { cursor: w-resize; }
+
+/* Dividers between groups when collapsed */
+.sb-root[data-state="collapsed"] .sb-group + .sb-group {
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding-top: 8px;
+}
 
 /* Collapsed icon-rail state */
 .sb-root[data-state="collapsed"] .sb-team-meta,
@@ -8795,22 +8802,6 @@ function Sidebar({ mode, setMode, section, setSection, collapsed, onToggle, focu
             </SidebarGroup>
           )}
 
-          {!isHome && pastChats && pastChats.length > 0 && (
-            <SidebarGroup>
-              <SidebarGroupLabel>Recent chats</SidebarGroupLabel>
-              <SidebarMenu>
-                {pastChats.slice(0, 5).map(c => (
-                  <SidebarMenuItem key={c.id}>
-                    <SidebarMenuButton isActive={c.active} className="muted" title={c.label}>
-                      <I.chat size={16} />
-                      <span className="sb-mi-text">{c.label}</span>
-                      <span className="sb-mi-time">{c.time}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroup>
-          )}
         </SidebarContent>
 
         {/* ── Footer: NavUser ── */}
@@ -8899,7 +8890,7 @@ function Topbar({ section, onToggleSidebar, right, showSidebarToggle = true, min
   crumbs = adminCrumb(section.charAt(0).toUpperCase() + section.slice(1));
 
   return (
-    <div className="topbar" style={{ padding: "0px 8px 0px 14px" }}>
+    <div className="topbar" style={{ padding: "0px 8px 0px 8px" }}>
       <div className="tb-left">
         {showSidebarToggle &&
         <button className="icon-btn" onClick={onToggleSidebar} title={minimizeMode ? 'Minimize page' : 'Toggle sidebar'}>
