@@ -4285,7 +4285,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 6px 8px 8px;
+  padding: 6px 8px;
   gap: 4px;
   background: transparent;
   color: var(--sidebar-foreground);
@@ -4293,7 +4293,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   overflow: hidden;
   transition: width .28s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.sb-root[data-collapsed="true"] { padding: 6px 8px 8px; }
+.sb-root[data-collapsed="true"] { padding: 6px 8px; }
 
 /* Header */
 .sb-header { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; padding: 0 0 4px; }
@@ -7314,6 +7314,8 @@ I.image = mk('<circle cx="7.5" cy="7.5" r="1.5"/><path d="M2.5 12C2.5 7.52166 2.
 I.list = mk('<path d="M2 11.4C2 10.2417 2.24173 10 3.4 10H20.6C21.7583 10 22 10.2417 22 11.4V12.6C22 13.7583 21.7583 14 20.6 14H3.4C2.24173 14 2 13.7583 2 12.6V11.4Z"/><path d="M2 3.4C2 2.24173 2.24173 2 3.4 2H20.6C21.7583 2 22 2.24173 22 3.4V4.6C22 5.75827 21.7583 6 20.6 6H3.4C2.24173 6 2 5.75827 2 4.6V3.4Z"/><path d="M2 19.4C2 18.2417 2.24173 18 3.4 18H20.6C21.7583 18 22 18.2417 22 19.4V20.6C22 21.7583 21.7583 22 20.6 22H3.4C2.24173 22 2 21.7583 2 20.6V19.4Z"/>');
 I.coffee = mk('<path d="M5 7L6.7602 17.4048C7.06616 19.2134 7.21914 20.1177 7.76007 20.7417C9.21438 22.4194 14.7856 22.4194 16.2399 20.7417C16.7809 20.1177 16.9338 19.2134 17.2398 17.4048L19 7"/><path d="M5 7L5.74278 5.2876C6.35168 3.88385 6.65613 3.18197 7.29101 2.7856C8.88049 1.79324 14.9452 1.68444 16.709 2.7856C17.3439 3.18197 17.6483 3.88385 18.2572 5.2876L19 7"/><path d="M4 7H20"/><ellipse cx="12" cy="14.5" rx="2" ry="2.5"/>');
 I.heartSolid = mk('<path d="M10.4107 19.9677C7.58942 17.858 2 13.0348 2 8.69444C2 5.82563 4.10526 3.5 7 3.5C8.5 3.5 10 4 12 6C14 4 15.5 3.5 17 3.5C19.8947 3.5 22 5.82563 22 8.69444C22 13.0348 16.4106 17.858 13.5893 19.9677C12.6399 20.6776 11.3601 20.6776 10.4107 19.9677Z"/>');
+
+I.arrowLeftDouble = mk('<path d="M11.5 18C11.5 18 5.50001 13.5811 5.5 12C5.49999 10.4188 11.5 6 11.5 6"/><path d="M18.5 18C18.5 18 12.5 13.5811 12.5 12C12.5 10.4188 18.5 6 18.5 6"/>');
 
 // Custom icons (no direct Hugeicons equivalent)
 I.logo = ({size=22}) => React.createElement('svg', {
@@ -15212,9 +15214,8 @@ function SideChatPane({ chat, onClose, onToggleSidebar }) {
   return (
     <div className="side-chat">
       <div className="sc-head">
-        <button className="icon-btn" onClick={onToggleSidebar} title="Toggle sidebar"><I.sidebar size={16} /></button>
-        <div className="sc-title">{trim}</div>
-        <button className="icon-btn" style={{ marginLeft: 'auto' }} onClick={onClose} title="Close chat"><I.close size={15} /></button>
+        <div className="sc-title">Agent chat</div>
+        <button className="icon-btn" style={{ marginLeft: 'auto' }} onClick={onClose} title="Minimize chat"><I.arrowLeftDouble size={16} /></button>
       </div>
       <div className="sc-feed">
         <div className="msg user">
