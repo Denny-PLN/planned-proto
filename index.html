@@ -15288,6 +15288,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 
 // Agentation — shimmed CJS bundle for browser UMD environment
 (function() {
+  var process = { env: { NODE_ENV: 'production' } };
   var module = { exports: {} };
   var exports = module.exports;
 
@@ -27075,9 +27076,8 @@ function PageFeedbackToolbarCSS({
   var A = module.exports.Agentation;
   if (typeof A === 'function') {
     window.Agentation = A;
-    console.log('[agentation] loaded OK, component:', A.name || 'anonymous');
   } else {
-    console.error('[agentation] export not a function, got:', typeof A, A);
+    console.error('[agentation] export not a function:', typeof A);
   }
 })();
 
