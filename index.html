@@ -15286,21 +15286,21 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 </script>
   <script>
 
-// Agentation — visual feedback tool for agents
-// Loaded from npm:agentation, shimmed to use UMD React globals
+// Agentation — shimmed CJS bundle for browser UMD environment
 (function() {
   var module = { exports: {} };
   var exports = module.exports;
 
   function require(name) {
-    if (name === 'react') return React;
-    if (name === 'react-dom') return ReactDOM;
+    if (name === 'react') return window.React;
+    if (name === 'react-dom') return window.ReactDOM;
     if (name === 'react/jsx-runtime') return {
-      jsx: React.createElement,
-      jsxs: React.createElement,
-      Fragment: React.Fragment
+      jsx: window.React.createElement,
+      jsxs: window.React.createElement,
+      Fragment: window.React.Fragment
     };
-    throw new Error('[agentation] Unknown module: ' + name);
+    console.warn('[agentation] unexpected require:', name);
+    return {};
   }
 
 "use client";
@@ -27072,15 +27072,32 @@ function PageFeedbackToolbarCSS({
 });
 //# sourceMappingURL=index.js.map
 
-  window.Agentation = module.exports.Agentation;
+  var A = module.exports.Agentation;
+  if (typeof A === 'function') {
+    window.Agentation = A;
+    console.log('[agentation] loaded OK, component:', A.name || 'anonymous');
+  } else {
+    console.error('[agentation] export not a function, got:', typeof A, A);
+  }
 })();
 
 </script>
-  <script type="text/babel">
-    // Mount Agentation after React app has rendered
-    const _agDiv = document.createElement('div');
-    document.body.appendChild(_agDiv);
-    ReactDOM.createRoot(_agDiv).render(React.createElement(Agentation));
+  <script>
+    // Mount Agentation in its own root, outside the app tree
+    window.addEventListener('DOMContentLoaded', function() {
+      setTimeout(function() {
+        try {
+          if (!window.Agentation) { console.error('[agentation] window.Agentation not found'); return; }
+          var div = document.createElement('div');
+          div.id = 'agentation-root';
+          document.body.appendChild(div);
+          ReactDOM.createRoot(div).render(React.createElement(window.Agentation));
+          console.log('[agentation] mounted OK');
+        } catch(e) {
+          console.error('[agentation] mount error:', e);
+        }
+      }, 500);
+    });
   </script>
 </body>
 </html>
