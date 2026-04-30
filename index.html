@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=1280">
   <title>Planned</title>
-  <style>/* ==========================================================================
+  <style>
+/* ==========================================================================
    Planned Design System — Tokens
    Source: packages/ui/src/styles/globals.css (@planned/ui)
    --------------------------------------------------------------------------
@@ -243,105 +244,76 @@ code, pre, kbd {
   font-size: 0.875em;
 }
 
-@import url('colors_and_type.css');
+</style>
+  <style>
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body { background: #fff; color: var(--foreground); font: var(--text-body); -webkit-font-smoothing: antialiased; }
 button { font-family: inherit; }
 
-/* ===== App layout (shadcn sidebar-08 inset variant) =====
-   Page canvas is a slightly darker neutral so the white .main card
-   reads as a floating inset. Sidebar sits on the canvas, not the card. */
-.app { display: grid; grid-template-columns: 248px 1fr; height: 100vh; overflow: hidden; padding: 8px 8px 8px 0; gap: 0; box-sizing: border-box; background: var(--app-canvas, oklch(0.975 0 0)); transition: grid-template-columns .28s cubic-bezier(0.4, 0, 0.2, 1); }
+/* ===== App shell =====
+   Canvas is slightly darker so the unified white .panel card floats above it.
+   Sidebar sits on the canvas; .panel is the single white surface. */
+.app {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  height: 100vh;
+  overflow: hidden;
+  padding: 8px 8px 8px 0;
+  gap: 0;
+  box-sizing: border-box;
+  background: oklch(0.975 0 0);
+  transition: grid-template-columns .28s cubic-bezier(0.4, 0, 0.2, 1);
+}
 .app.mini { grid-template-columns: 56px 1fr; }
 
-/* Unified panel — single white card that wraps either just .main, or
-   .side-chat + .main when the AI chat is open. Owns the rounded outer
-   border and shadow; children are flat splits inside. */
+/* ===== Unified white panel =====
+   THE white card. Owns all the rounding, border, and shadow.
+   Both .side-chat and .main are flat children — no individual card styling. */
 .panel {
-  background: #fff;
-  border-radius: 14px;
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
-  display: flex;
-  min-width: 0; min-height: 0;
-  height: 100%;
-  box-shadow:
-    0 0 0 1px oklch(0.145 0 0 / 0.06),
-    0 1px 2px oklch(0.145 0 0 / 0.04),
-    0 8px 24px -8px oklch(0.145 0 0 / 0.08);
-}
-.panel.panel-split {
-  display: flex;
-  position: relative;
-}
-.panel.panel-split > .side-chat { width: var(--side-chat-w, 380px); flex: 0 0 auto; }
-.panel > .main { flex: 1 1 0; min-width: 0; }
-/* Children of the unified panel render flat — no individual rounding/shadow. */
-.panel > .side-chat,
-.panel > .main {
-  border-radius: 0;
-  box-shadow: none;
-  height: 100%;
-  margin: 0;
+  border-radius: 14px;
   background: #fff;
-  min-width: 0; min-height: 0;
-}
-/* Hairline seam between chat and main */
-.panel.panel-split > .main {
-  border-left: 1px solid oklch(0.95 0 0);
+  border: 1px solid oklch(0.91 0 0);
 }
 
-/* Internal padding so the breadcrumb/content sits inset from the panel edge
-   when the chat is open. */
-.panel.panel-split > .main > .topbar {
-  padding: 0 20px !important;
-  height: 46px;
-  min-height: 46px;
+/* .main: flat flex column, fills remaining width */
+.panel > .main {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  overflow: hidden;
+  /* no border-radius, no box-shadow, no margin — panel owns those */
 }
-.panel.panel-split > .main > .content {
-  padding: 16px 24px 64px;
+
+/* .side-chat: flat, fixed width, right border as the divider */
+.panel > .side-chat {
+  flex: 0 0 var(--side-chat-w, 380px);
+  min-width: 0;
+  height: 100%;
+  background: #fff;
+  border-right: 1px solid oklch(0.92 0 0);
+  /* no border-radius, no box-shadow — panel owns those */
 }
 
-/* Side-chat layout: sidebar | chat pane | main
-   chat + main are ONE unified white panel — zero gap between them, shared rounded outer border. */
-/* App layout stays 2-column (sidebar | panel) regardless of chat state.
-   The .panel itself splits internally when chat is open. */
-.app.has-side-chat { gap: 0; padding: 8px 8px 8px 0; }
-.app.has-side-chat.mini { gap: 0; padding: 8px 8px 8px 0; }
-.app.has-side-chat > .sb-root,
-.app.has-side-chat > .sidebar { margin-right: 0; }
-
-/* Focus mode is disabled — main is never hidden */
-.app.focus .sc-resizer { display: none; }
-
-/* (legacy) */
-.app.has-side-chat .main { margin-left: 0; }
-
-/* Side chat pane — left half of the unified panel.
-   Only the left edge is rounded; the right edge butts flat against .main.
-   The shared outer ring/shadow is rendered by .main; .side-chat carries
-   only the left-side hairline so the surfaces look continuous. */
+/* .side-chat interior layout — no card styling (panel owns that) */
 .side-chat {
   background: #fff;
   display: flex; flex-direction: column;
   height: 100%;
-  align-self: stretch;
-  margin: 0;
-  border-radius: 14px 0 0 14px;
   overflow: hidden;
   min-width: 0;
   min-height: 0;
   position: relative;
-  box-shadow:
-    inset 1px 0 0 oklch(0.145 0 0 / 0.06),
-    inset 0 1px 0 oklch(0.145 0 0 / 0.06),
-    inset 0 -1px 0 oklch(0.145 0 0 / 0.06);
 }
-/* When the unified panel is showing, .main loses its left rounding so the
-   two halves form one continuous surface, and gains internal padding so
-   the content (breadcrumb / page) sits inset from the panel edge.
-   (Active rules live above on .panel.panel-split > .main.) */
 .sc-head { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 50px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .sc-head .icon-btn { background: none; border: none; cursor: pointer; color: var(--muted-foreground); padding: 6px; border-radius: 6px; display: inline-flex; }
 .sc-head .icon-btn:hover { background: var(--muted); color: var(--foreground); }
@@ -411,18 +383,13 @@ button { font-family: inherit; }
 .ws-text { flex:1; min-width:0; font: 400 13px/1.2 var(--font-sans); }
 .ws-chev { color: var(--muted-foreground); }
 
-/* ===== Main content (inset card) ===== */
+/* ===== Main content — flat flex column, panel owns the card styling ===== */
 .main {
   display: flex; flex-direction: column; min-width: 0; min-height: 0;
   background: #fff;
-  height: calc(100vh - 16px);
+  height: 100%;
   margin: 0;
-  border-radius: 14px;
   overflow: hidden;
-  box-shadow:
-    0 0 0 1px oklch(0.145 0 0 / 0.06),
-    0 1px 2px oklch(0.145 0 0 / 0.04),
-    0 8px 24px -8px oklch(0.145 0 0 / 0.08);
 }
 .topbar { height: 46px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px 0 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .tb-left { display:flex; align-items:center; gap: 10px; }
@@ -1122,26 +1089,9 @@ button { font-family: inherit; }
 .ask-ai-link:hover { color: color-mix(in oklab, var(--action-primary) 80%, black); }
 .ask-ai-link svg { color: var(--action-primary); }
 
-/* ===== Side chat pane (Ask AI left panel) =====
-   Unified panel: chat + main share one rounded white surface.
-   App grid stays 2-column (sidebar | panel); the .panel splits internally. */
-.app.has-side-chat { grid-template-columns: 248px 1fr; }
-.app.mini.has-side-chat { grid-template-columns: 56px 1fr; }
+/* ===== Focus / side-chat layout overrides ===== */
 .app.focus { grid-template-columns: 1fr; }
-.app.focus.has-side-chat { grid-template-columns: 1fr; }
 .app.focus .sidebar { width: 100%; padding-right: 12px; }
-.side-chat {
-  background: #fff;
-  display: flex; flex-direction: column;
-  height: 100%;
-  margin: 0;
-  border-radius: 14px 0 0 14px;
-  min-width: 0;
-  border: 1px solid var(--border);
-  border-right: none;
-  overflow: hidden;
-}
-.app.has-side-chat > .main { border-radius: 0; }
 
 /* Drag handle between side chat and main — sits on the seam, always visible. */
 .sc-resizer {
@@ -4323,6 +4273,8 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   color: var(--muted-foreground);
 }
 
+</style>
+  <style>
 /* ========================================================================
    Sidebar — shadcn sidebar-08 inset variant (design-system spec)
    Replaces the legacy `.sidebar` / `.nav-item` rules.
@@ -5692,6 +5644,8 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 }
 .sc-card-footer .sc-range-pills { margin-right: 0; }
 
+</style>
+  <style>
 /* ==========================================================================
    shadcn primitives — pure default look
    Mirrors the Tailwind output of @planned/ui (which is shadcn defaults).
@@ -7202,11 +7156,11 @@ tr.d-row:last-child > td,
 </head>
 <body>
   <div id="root"></div>
-  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.min.js"></script>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
   <script>
 // Sample data used across admin screens
 window.DATA = {
@@ -7254,9 +7208,10 @@ window.DATA = {
   },
 };
 
-  </script>
-
-<script type="text/babel" data-presets="react">
+</script>
+  <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.min.js"></script>
+  <script type="text/babel">
 // Inline HugeIcons-style SVG icons (hand-matched stroke 1.5, round caps, 24px viewBox)
 const I = {};
 const mk = (d) => ({ size = 16, className = '', style = {}, strokeWidth = 1.5 } = {}) =>
@@ -7377,8 +7332,7 @@ I.heartSolid = ({ size = 14, className = '', style = {} } = {}) => (
 window.I = I;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // ==========================================================================
 // shadcn primitive wrappers — React 18, no JSX runtime, no TypeScript.
 // Each component renders the same data-slot attributes the @planned/ui
@@ -7931,8 +7885,7 @@ Object.assign(window, {
 });
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Liveline — live-animated line chart, canvas-based, 60fps lerp.
 // Inspired by benji.org/liveline. Faked live ticks for demo realism.
 const { useRef: useRefL, useEffect: useEffectL, useState: useStateL, useMemo: useMemoL } = React;
@@ -8303,8 +8256,7 @@ window.Liveline = Liveline;
 window.LivelineWindows = LivelineWindows;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // ShadcnChart — shadcn/ui "chart-line-interactive" port.
 // Header strip with metric pill buttons (total + label, active highlight),
 // body holds a Recharts LineChart with grid + x-axis + tooltip.
@@ -8480,8 +8432,7 @@ function ShadcnChart({
 window.ShadcnChart = ShadcnChart;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Sidebar — shadcn sidebar-08 inset variant (design-system spec)
 // TeamSwitcher header → grouped nav (Platform / Active events / Secondary) → NavUser footer.
 
@@ -8728,8 +8679,7 @@ function Sidebar({ mode, setMode, section, setSection, collapsed, onToggle, focu
 }
 window.Sidebar = Sidebar;
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Topbar — breadcrumbs + right-side controls
 function Topbar({ section, onToggleSidebar, right, showSidebarToggle = true, minimizeMode = false, homeCrumb = null, title = null }) {
   // Crumbs
@@ -8808,8 +8758,7 @@ function Topbar({ section, onToggleSidebar, right, showSidebarToggle = true, min
 
 window.Topbar = Topbar;
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Routines screens
 const { useState: useStateR } = React;
 
@@ -9617,8 +9566,7 @@ function RoutineDetailFlyout({ routine, onClose, onToggle, onEdit, onDelete, onD
 window.RoutineDetailFlyout = RoutineDetailFlyout;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Policies screens
 const { useState: useStateP, useRef: useRefP } = React;
 
@@ -10814,8 +10762,7 @@ window.PoliciesChat = PoliciesChat;
 window.PolicyDetailFlyout = PolicyDetailFlyout;
 window.Sparkline = Sparkline;
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Insights screen - live interactive chart
 const { useState: useStateI, useMemo: useMemoI, useRef: useRefI } = React;
 
@@ -11347,8 +11294,7 @@ window.Insights = Insights;
 window.RingChart = RingChart;
 window.SuggestedActionFlyout = SuggestedActionFlyout;
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Dashboard > Events report
 // Refactored to use shadcn primitives.
 
@@ -11743,8 +11689,7 @@ function Dashboard({ tab, setTab }) {
 window.Dashboard = Dashboard;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Dashboard > Savings tab.
 
 const SAVINGS_KPIS = [
@@ -11922,8 +11867,7 @@ function DashboardSavings() {
 window.DashboardSavings = DashboardSavings;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Dashboard > Time savings tab.
 
 const TS_KPIS = [
@@ -12139,8 +12083,7 @@ function DashboardTimeSavings() {
 window.DashboardTimeSavings = DashboardTimeSavings;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Dashboard > Suppliers tab.
 
 const SUP_KPIS = [
@@ -12453,8 +12396,7 @@ function DashboardSuppliers() {
 window.DashboardSuppliers = DashboardSuppliers;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Dashboard > Internal spaces tab.
 
 const ISP_KPIS = [
@@ -12577,8 +12519,7 @@ function DashboardInternalSpaces() {
 window.DashboardInternalSpaces = DashboardInternalSpaces;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Dashboard > Room blocks tab.
 
 const RB_KPIS = [
@@ -12741,8 +12682,7 @@ function DashboardRoomBlocks() {
 window.DashboardRoomBlocks = DashboardRoomBlocks;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Users > Adoption
 // Static recreation — funnel chart, two stat cards, full users table.
 
@@ -13035,8 +12975,7 @@ function Users() {
 window.Users = Users;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Events tab — full event listing with KPIs + status bar header.
 const { useState: useStateE } = React;
 
@@ -13189,8 +13128,7 @@ function Events() {
 window.Events = Events;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Invoices tab — KPI row + invoices table.
 
 const INV_ROWS = [
@@ -13308,8 +13246,7 @@ function Invoices() {
 window.Invoices = Invoices;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Contracts tab — table only, status pills, category icons.
 
 const CON_ROWS = [
@@ -13419,8 +13356,7 @@ function Contracts() {
 window.Contracts = Contracts;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Task reporting tab — Assignee/Event summary tabs + summary table.
 
 const TASK_ROWS = [
@@ -13507,8 +13443,7 @@ function TaskReporting() {
 window.TaskReporting = TaskReporting;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Approvals tab — reviewer avatars + Pending pills.
 
 const APP_ROWS = [
@@ -13618,8 +13553,7 @@ function Approvals() {
 window.Approvals = Approvals;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Preferred tab — Suppliers/Cities sub-tabs + simple table.
 
 const PREF_ROWS = [
@@ -13685,8 +13619,7 @@ function Preferred() {
 window.Preferred = Preferred;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Intake forms tab.
 
 const IF_ROWS = [
@@ -13787,8 +13720,7 @@ function IntakeForms() {
 window.IntakeForms = IntakeForms;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Company settings page.
 
 const SETTINGS_TABS = [
@@ -13908,8 +13840,7 @@ function CompanySettings() {
 window.CompanySettings = CompanySettings;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Internal spaces > Offices.
 
 const OFFICES = [
@@ -13994,8 +13925,7 @@ function Offices() {
 window.Offices = Offices;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Internal spaces > Spaces.
 
 const SPACE_OFFICES = [
@@ -14099,8 +14029,7 @@ function Spaces() {
 window.Spaces = Spaces;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Admin > Internal spaces > Requests.
 
 function FilterChip({ label, value }) {
@@ -14150,8 +14079,7 @@ function Requests() {
 window.Requests = Requests;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Home mode — Ellie's planner view.
 // Screens: dashboard, my-events, event-detail, + stubs for tasks/inbox/suppliers/marketplace/agent.
 
@@ -14439,8 +14367,7 @@ function MyevAsset({ kicker, accent, title, desc, meta, coverTitle, coverKicker,
 window.HomeEventsList = HomeEventsList;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Event Detail — Summer Design Summit example
 // Pipeline stepper + 3 responsibility columns + inline Agent chat panel.
 
@@ -14763,8 +14690,7 @@ function EventChatPanel({ onClose }) {
 window.EventChatPanel = EventChatPanel;
 
 </script>
-
-<script type="text/babel" data-presets="react">
+  <script type="text/babel">
 // Root App — dual mode (home / admin)
 const { useState: useStateA, useEffect: useEffectA, useRef: useRefA } = React;
 
@@ -15360,6 +15286,5 @@ window.SideChatResizer = SideChatResizer;
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 </script>
-
 </body>
 </html>
