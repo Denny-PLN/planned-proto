@@ -4452,20 +4452,24 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   min-width: 0;
 }
 .sb-mi:hover { background: var(--sidebar-accent); }
-.sb-mi > svg { color: var(--sidebar-foreground); opacity: .72; }
+/* Inactive icon: notably dimmer to signal non-current state */
+.sb-mi > svg { color: var(--sidebar-foreground); opacity: .46; }
 .sb-mi.muted { color: var(--sidebar-foreground); opacity: .82; }
 .sb-mi.muted:hover { opacity: 1; }
 .sb-mi-text {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   letter-spacing: -0.005em;
+  opacity: 0.62; /* inactive label: one step lighter than active */
 }
 .sb-mi.active {
-  background: var(--sidebar-accent);
-  color: var(--sidebar-accent-foreground);
+  background: color-mix(in oklab, var(--sidebar-foreground) 11%, transparent);
+  color: var(--sidebar-foreground);
   font-weight: 500;
-  opacity: 1;
 }
-.sb-mi.active > svg { opacity: 1; }
+/* Active label: full weight/opacity */
+.sb-mi.active .sb-mi-text { opacity: 1; }
+/* Active icon: a tad lighter than the label */
+.sb-mi.active > svg { opacity: .72; }
 
 .sb-pill {
   height: 18px; min-width: 18px; padding: 0 6px;
@@ -10106,7 +10110,7 @@ function WorkflowView({ workflow, editConds, setEditConds }) {
 }
 
 // ─── Pending confirm modal ────────────────────────────────────────────────────
-function PendingConfirmModal({ onMarkPending, onNotYet }) {
+function PendingConfirmModal({ onMarkPending, onNotYet, mailtoHref }) {
   return (
     <>
       <div style={{ position: 'fixed', inset: 0, zIndex: 110, background: 'rgba(0,0,0,0.15)' }} onClick={onNotYet} />
@@ -10123,7 +10127,7 @@ function PendingConfirmModal({ onMarkPending, onNotYet }) {
           Your email to Dylan is ready
         </div>
         <div style={{ font: '400 13px/1.5 var(--font-sans)', color: 'var(--muted-foreground)', marginBottom: 24 }}>
-          Your email client should have opened with a pre-filled message. Did you send it?
+          Your email client should have opened with a pre-filled message. Did you send it? Dylan usually configures within 1 business day.
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn outline" style={{ flex: 1, height: 34 }} onClick={onNotYet}>Not yet</button>
@@ -10131,9 +10135,13 @@ function PendingConfirmModal({ onMarkPending, onNotYet }) {
             <I.check size={13} /> Yes, mark as pending
           </button>
         </div>
-        <div style={{ font: '400 11px/1.4 var(--font-sans)', color: 'var(--muted-foreground)', marginTop: 14 }}>
-          Usually configured within 1 business day.
-        </div>
+        {mailtoHref && (
+          <div style={{ marginTop: 14 }}>
+            <a href={mailtoHref} style={{ font: '400 11.5px/1.4 var(--font-sans)', color: 'var(--action-primary)', textDecoration: 'underline', cursor: 'pointer' }}>
+              Link didn't open? Press here to send the email
+            </a>
+          </div>
+        )}
       </div>
     </>
   );
@@ -10155,9 +10163,11 @@ function PolicyDetailFlyout({ onClose, onRequestSetup, onCancelPending, mode, po
   );
   const [notes, setNotes] = useStateP(policy?.notes || '');
   const [showConfirm, setShowConfirm] = useStateP(false);
+  const [pendingHref, setPendingHref] = useStateP('');
 
   const handleRequestSetup = () => {
     const href = buildMailto(policy, editConds, notes);
+    setPendingHref(href);
     window.open(href, '_self');
     setTimeout(() => setShowConfirm(true), 600);
   };
@@ -10346,6 +10356,7 @@ function PolicyDetailFlyout({ onClose, onRequestSetup, onCancelPending, mode, po
         <PendingConfirmModal
           onNotYet={() => setShowConfirm(false)}
           onMarkPending={handleMarkPending}
+          mailtoHref={pendingHref}
         />
       )}
     </>
