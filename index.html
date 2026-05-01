@@ -11166,7 +11166,6 @@ function Dashboard({ tab, setTab }) {
       </Tabs>
 
       {primaryTab === 'savings' ? <DashboardSavings /> : primaryTab === 'time-savings' ? <DashboardTimeSavings /> : primaryTab === 'suppliers' ? <DashboardSuppliers /> : primaryTab === 'internal-spaces' ? <DashboardInternalSpaces /> : primaryTab === 'room-blocks' ? <DashboardRoomBlocks /> : primaryTab === 'events-report' ? (
-      {/* ── Charts + metrics + table — one combined block ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
         {/* Charts + metrics section, inner gap 16 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
