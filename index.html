@@ -10611,7 +10611,7 @@ function Insights({ onAskAI, onOpenSuggested }) {
   };
 
   return (
-    <div className="ins-page" style={{ gap: "64px" }}>
+    <div className="ins-page" style={{ gap: "40px" }}>
       {/* Shadcn line chart — vitals-as-tabs + chart body + embedded Summary */}
       <div className="ins-chart-group" style={{ margin: "20px 0px 0px" }}>
         <div className="ins-chart-toolbar">
@@ -11422,7 +11422,7 @@ function SavingsKpiCard({ label, value, dot }) {
 
 function DashboardSavings() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
       {/* 3x3 KPI grid */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {SAVINGS_KPIS.map((row, i) => (
@@ -11623,7 +11623,7 @@ function TsTaskChart() {
 
 function DashboardTimeSavings() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
       {/* 4 KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         {TS_KPIS.map(k => (
@@ -11912,7 +11912,7 @@ function DashboardSuppliers() {
   const [period, setPeriod] = React.useState('monthly');
   const [view, setView] = React.useState('supplier');
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ position: 'relative', flex: '0 0 260px' }}>
@@ -11923,6 +11923,15 @@ function DashboardSuppliers() {
         <Button variant="outline" size="sm"><I.filter size={12} /> Filters</Button>
         <div style={{ flex: 1 }} />
         <Button variant="outline" size="sm"><I.search size={11} /> USD <I.chevronDown size={11} /></Button>
+        <div style={{ width: 1, height: 20, background: 'var(--border)' }} />
+        <Tabs value={period} onValueChange={setPeriod}>
+          <TabsList>
+            <TabsTrigger value="monthly">Monthly</TabsTrigger>
+            <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
+            <TabsTrigger value="yearly">Yearly</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div style={{ width: 1, height: 20, background: 'var(--border)' }} />
         <Tabs value={view} onValueChange={setView}>
           <TabsList>
             <TabsTrigger value="supplier">Supplier</TabsTrigger>
@@ -11948,17 +11957,6 @@ function DashboardSuppliers() {
       {/* Chart + top suppliers */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
         <Card>
-          <CardHeader style={{ paddingBottom: 0 }}>
-            <CardAction>
-              <Tabs value={period} onValueChange={setPeriod}>
-                <TabsList>
-                  <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                  <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
-                  <TabsTrigger value="yearly">Yearly</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </CardAction>
-          </CardHeader>
           <CardContent>
             <SupSpendChart />
           </CardContent>
@@ -12074,7 +12072,7 @@ function IspNameEmail({ name, email }) {
 
 function DashboardInternalSpaces() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
         {ISP_KPIS.map(k => (
@@ -12249,7 +12247,7 @@ function RbAttrDonut({ spent, of }) {
 
 function DashboardRoomBlocks() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
         {RB_KPIS.map(k => (
