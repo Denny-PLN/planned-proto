@@ -11259,8 +11259,8 @@ function Dashboard({ tab, setTab }) {
           </div>
         </div>
 
-        {/* ── Events table — toolbar inside table container ── */}
-        <div data-slot="table-container">
+        {/* ── Events table — toolbar above the scroll area, both inside one wrapper ── */}
+        <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 0 12px 0' }}>
             <span style={{ fontSize: 16, fontWeight: 500 }}>Events</span>
             <div style={{ flex: 1 }} />
@@ -11270,7 +11270,7 @@ function Dashboard({ tab, setTab }) {
             </div>
             <Button variant="ghost" size="sm"><I.upload size={12} /> Export</Button>
           </div>
-          <table data-slot="table">
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead style={{ width: 32 }}><Checkbox /></TableHead>
@@ -11309,7 +11309,7 @@ function Dashboard({ tab, setTab }) {
                 </TableRow>
               ))}
             </TableBody>
-          </table>
+          </Table>
         </div>
       </div>
       ) : (
