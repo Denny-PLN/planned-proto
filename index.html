@@ -3407,7 +3407,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 }
 
 /* Table */
-.u-table-card { margin-top: 12px; }
+.u-table-card { margin-top: 40px; }
 .u-table { min-width: 1700px; }
 .u-table th { font-weight: 400; }
 .u-td-email { color: var(--foreground); }
@@ -3516,7 +3516,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 }
 
 /* Table */
-.ev-table-card { margin-top: 12px; }
+.ev-table-card { margin-top: 40px; }
 .ev-table { min-width: 1700px; }
 .ev-table th { font-weight: 400; }
 .ev-td-name { color: var(--foreground); font-weight: 400; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3570,7 +3570,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   justify-content: space-between;
 }
 
-.inv-table-card { margin-top: 12px; }
+.inv-table-card { margin-top: 40px; }
 .inv-table { min-width: 1300px; }
 .inv-table th { font-weight: 400; }
 .inv-td-event { color: var(--foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
@@ -3619,7 +3619,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
    Admin > Task reporting
    =========================================================== */
 .tr-tabs { border-bottom: 1px solid var(--border); padding: 0 18px; }
-.tr-table-card { margin-top: 12px; }
+.tr-table-card { margin-top: 40px; }
 .tr-table { min-width: 900px; }
 .tr-table th { font-weight: 400; }
 .tr-td-name { color: var(--foreground); }
@@ -3723,7 +3723,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 /* ============================================================
    Preferred — Suppliers / Cities tab
    ============================================================ */
-.pf-table-card { margin-top: 12px; }
+.pf-table-card { margin-top: 40px; }
 .pf-table { min-width: 700px; }
 .pf-table th { font-weight: 500; color: var(--muted-foreground); }
 .pf-td-supplier { color: var(--foreground); font-weight: 400; }
@@ -12072,34 +12072,36 @@ function IspNameEmail({ name, email }) {
 
 function DashboardInternalSpaces() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* KPI cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-        {ISP_KPIS.map(k => (
-          <Card key={k.label}>
-            <CardHeader>
-              <CardDescription style={{ fontSize: 12 }}>{k.label}</CardDescription>
-              <CardTitle style={{ fontSize: 22, fontWeight: 500, marginTop: 2 }}>{k.value}</CardTitle>
-            </CardHeader>
-          </Card>
-        ))}
-      </div>
-
-      {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div className="d-search" style={{ minWidth: 280 }}>
-          <I.search size={13} />
-          <input placeholder="Search" />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* KPI cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          {ISP_KPIS.map(k => (
+            <Card key={k.label}>
+              <CardHeader>
+                <CardDescription style={{ fontSize: 12 }}>{k.label}</CardDescription>
+                <CardTitle style={{ fontSize: 22, fontWeight: 500, marginTop: 2 }}>{k.value}</CardTitle>
+              </CardHeader>
+            </Card>
+          ))}
         </div>
-        <button className="d-btn outline" aria-label="Sort">
-          <I.sort size={12} />
-        </button>
-        <button className="d-btn outline">
-          <I.filter size={12} /> Filters
-        </button>
-        <button className="d-btn outline">
-          <I.upload size={12} /> Export
-        </button>
+
+        {/* Toolbar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="d-search" style={{ minWidth: 280 }}>
+            <I.search size={13} />
+            <input placeholder="Search" />
+          </div>
+          <button className="d-btn outline" aria-label="Sort">
+            <I.sort size={12} />
+          </button>
+          <button className="d-btn outline">
+            <I.filter size={12} /> Filters
+          </button>
+          <button className="d-btn outline">
+            <I.upload size={12} /> Export
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -12247,7 +12249,7 @@ function RbAttrDonut({ spent, of }) {
 
 function DashboardRoomBlocks() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
         {RB_KPIS.map(k => (
