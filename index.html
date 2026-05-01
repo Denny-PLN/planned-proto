@@ -11166,103 +11166,94 @@ function Dashboard({ tab, setTab }) {
       </Tabs>
 
       {primaryTab === 'savings' ? <DashboardSavings /> : primaryTab === 'time-savings' ? <DashboardTimeSavings /> : primaryTab === 'suppliers' ? <DashboardSuppliers /> : primaryTab === 'internal-spaces' ? <DashboardInternalSpaces /> : primaryTab === 'room-blocks' ? <DashboardRoomBlocks /> : primaryTab === 'events-report' ? (
-      <React.Fragment>
-      {/* ── Charts + metrics section (KPIs + chart rows), inner gap 16 ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* KPI cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-          {DASH_KPIS.map(k => (
-            <Card key={k.id}>
+      {/* ── Charts + metrics + table — one combined block ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+        {/* Charts + metrics section, inner gap 16 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* KPI cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+            {DASH_KPIS.map(k => (
+              <Card key={k.id}>
+                <CardHeader>
+                  <CardDescription style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{k.label} <I.help size={11} /></CardDescription>
+                  <CardTitle style={{ fontSize: 22, fontWeight: 500 }}>{k.value}</CardTitle>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+
+          {/* Spend chart + grouped */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <Card>
               <CardHeader>
-                <CardDescription style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{k.label} <I.help size={11} /></CardDescription>
-                <CardTitle style={{ fontSize: 22, fontWeight: 500 }}>{k.value}</CardTitle>
+                <CardTitle style={{ fontSize: 18, fontWeight: 500 }}>USD $1,701,478.32</CardTitle>
+                <CardAction>
+                  <Tabs value={spendMetric} onValueChange={setSpendMetric}>
+                    <TabsList>
+                      <TabsTrigger value="total">Total spend</TabsTrigger>
+                      <TabsTrigger value="avg">Average spend</TabsTrigger>
+                      <TabsTrigger value="count">Count</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </CardAction>
               </CardHeader>
+              <CardContent><SpendChart /></CardContent>
             </Card>
-          ))}
+
+            <Card>
+              <CardHeader>
+                <CardTitle style={{ fontSize: 16, fontWeight: 500 }}>Grouped by</CardTitle>
+                <CardAction>
+                  <Tabs value={groupBy} onValueChange={setGroupBy}>
+                    <TabsList>
+                      <TabsTrigger value="city">City</TabsTrigger>
+                      <TabsTrigger value="office">Office</TabsTrigger>
+                      <TabsTrigger value="activity">Activity</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </CardAction>
+              </CardHeader>
+              <CardContent><GroupedChart /></CardContent>
+            </Card>
+          </div>
+
+          {/* Creators + status */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <Card>
+              <CardHeader>
+                <CardTitle style={{ fontSize: 16, fontWeight: 500 }}>Events by creator</CardTitle>
+                <CardAction>
+                  <Tabs value={creatorBy} onValueChange={setCreatorBy}>
+                    <TabsList>
+                      <TabsTrigger value="creator">Creator</TabsTrigger>
+                      <TabsTrigger value="lead">Event lead</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </CardAction>
+              </CardHeader>
+              <CardContent><CreatorsChart /></CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle style={{ fontSize: 16, fontWeight: 500 }}>Events by status</CardTitle>
+              </CardHeader>
+              <CardContent><StatusChart /></CardContent>
+            </Card>
+          </div>
         </div>
 
-        {/* Spend chart + grouped */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <Card>
-            <CardHeader>
-              <CardTitle style={{ fontSize: 18, fontWeight: 500 }}>USD $1,701,478.32</CardTitle>
-              <CardAction>
-                <Tabs value={spendMetric} onValueChange={setSpendMetric}>
-                  <TabsList>
-                    <TabsTrigger value="total">Total spend</TabsTrigger>
-                    <TabsTrigger value="avg">Average spend</TabsTrigger>
-                    <TabsTrigger value="count">Count</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <SpendChart />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle style={{ fontSize: 16, fontWeight: 500 }}>Grouped by</CardTitle>
-              <CardAction>
-                <Tabs value={groupBy} onValueChange={setGroupBy}>
-                  <TabsList>
-                    <TabsTrigger value="city">City</TabsTrigger>
-                    <TabsTrigger value="office">Office</TabsTrigger>
-                    <TabsTrigger value="activity">Activity</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <GroupedChart />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Creators + status */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <Card>
-            <CardHeader>
-              <CardTitle style={{ fontSize: 16, fontWeight: 500 }}>Events by creator</CardTitle>
-              <CardAction>
-                <Tabs value={creatorBy} onValueChange={setCreatorBy}>
-                  <TabsList>
-                    <TabsTrigger value="creator">Creator</TabsTrigger>
-                    <TabsTrigger value="lead">Event lead</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <CreatorsChart />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle style={{ fontSize: 16, fontWeight: 500 }}>Events by status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatusChart />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* ── Events table — own section at same level as tabs + chart block ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle style={{ fontSize: 16, fontWeight: 500 }}>Events</CardTitle>
-          <CardAction style={{ display: 'flex', gap: 8 }}>
+        {/* ── Events table — outside charts container, 40px below ── */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 16, fontWeight: 500 }}>Events</span>
+            <div style={{ flex: 1 }} />
             <div style={{ position: 'relative' }}>
               <I.search size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
               <Input placeholder="Search" style={{ paddingLeft: 28, width: 200, height: 28 }} />
             </div>
             <Button variant="ghost" size="sm"><I.upload size={12} /> Export</Button>
-          </CardAction>
-        </CardHeader>
-        <CardContent>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -11303,9 +11294,8 @@ function Dashboard({ tab, setTab }) {
               ))}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
-      </React.Fragment>
+        </div>
+      </div>
       ) : (
         <Card>
           <CardContent style={{ padding: 48, textAlign: 'center', color: 'var(--muted-foreground)' }}>
