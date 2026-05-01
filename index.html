@@ -11414,22 +11414,24 @@ function SavingsKpiCard({ label, value, dot }) {
 
 function DashboardSavings() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* 3x3 KPI grid */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {SAVINGS_KPIS.map((row, i) => (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-            {row.map(k => <SavingsKpiCard key={k.label} {...k} />)}
-          </div>
-        ))}
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* 3x3 KPI grid */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {SAVINGS_KPIS.map((row, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+              {row.map(k => <SavingsKpiCard key={k.label} {...k} />)}
+            </div>
+          ))}
+        </div>
 
-      {/* Chart */}
-      <Card>
-        <CardContent style={{ padding: 16 }}>
-          <SavingsChart />
-        </CardContent>
-      </Card>
+        {/* Chart */}
+        <Card>
+          <CardContent style={{ padding: 16 }}>
+            <SavingsChart />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Table toolbar */}
       <Card>
@@ -11615,43 +11617,45 @@ function TsTaskChart() {
 
 function DashboardTimeSavings() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* 4 KPI cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        {TS_KPIS.map(k => (
-          <Card key={k.label}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* 4 KPI cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {TS_KPIS.map(k => (
+            <Card key={k.label}>
+              <CardHeader>
+                <CardDescription style={{ fontSize: 12 }}>{k.label}</CardDescription>
+                <CardTitle style={{ fontSize: 22, fontWeight: 500, marginTop: 2 }}>
+                  {k.value}
+                  {k.unit && <span style={{ fontSize: 13, color: 'var(--muted-foreground)', fontWeight: 400, marginLeft: 6 }}>{k.unit}</span>}
+                </CardTitle>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+
+        {/* Two side-by-side cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {/* Time saved by team — shadcn horizontal bar chart */}
+          <Card>
             <CardHeader>
-              <CardDescription style={{ fontSize: 12 }}>{k.label}</CardDescription>
-              <CardTitle style={{ fontSize: 22, fontWeight: 500, marginTop: 2 }}>
-                {k.value}
-                {k.unit && <span style={{ fontSize: 13, color: 'var(--muted-foreground)', fontWeight: 400, marginLeft: 6 }}>{k.unit}</span>}
-              </CardTitle>
+              <CardDescription style={{ fontSize: 12 }}>Time saved by team</CardDescription>
             </CardHeader>
+            <CardContent>
+              <TsTeamChart />
+            </CardContent>
           </Card>
-        ))}
-      </div>
 
-      {/* Two side-by-side cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        {/* Time saved by team — shadcn horizontal bar chart */}
-        <Card>
-          <CardHeader>
-            <CardDescription style={{ fontSize: 12 }}>Time saved by team</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TsTeamChart />
-          </CardContent>
-        </Card>
-
-        {/* Hours saved by task — same component as Events report › Grouped by */}
-        <Card>
-          <CardHeader>
-            <CardDescription style={{ fontSize: 12 }}>Hours saved by task</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TsTaskChart />
-          </CardContent>
-        </Card>
+          {/* Hours saved by task — same component as Events report › Grouped by */}
+          <Card>
+            <CardHeader>
+              <CardDescription style={{ fontSize: 12 }}>Hours saved by task</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TsTaskChart />
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Detail table */}
@@ -11904,66 +11908,68 @@ function DashboardSuppliers() {
   const [period, setPeriod] = React.useState('monthly');
   const [view, setView] = React.useState('supplier');
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ position: 'relative', flex: '0 0 260px' }}>
-          <I.search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
-          <Input placeholder="Search suppliers" style={{ paddingLeft: 30, height: 32 }} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Toolbar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ position: 'relative', flex: '0 0 260px' }}>
+            <I.search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
+            <Input placeholder="Search suppliers" style={{ paddingLeft: 30, height: 32 }} />
+          </div>
+          <Button variant="outline" size="icon"><I.sort size={12} /></Button>
+          <Button variant="outline" size="sm"><I.filter size={12} /> Filters</Button>
+          <div style={{ flex: 1 }} />
+          <Button variant="outline" size="sm"><I.search size={11} /> USD <I.chevronDown size={11} /></Button>
+          <Tabs value={view} onValueChange={setView}>
+            <TabsList>
+              <TabsTrigger value="supplier">Supplier</TabsTrigger>
+              <TabsTrigger value="company">Supplier company</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
-        <Button variant="outline" size="icon"><I.sort size={12} /></Button>
-        <Button variant="outline" size="sm"><I.filter size={12} /> Filters</Button>
-        <div style={{ flex: 1 }} />
-        <Button variant="outline" size="sm"><I.search size={11} /> USD <I.chevronDown size={11} /></Button>
-        <Tabs value={view} onValueChange={setView}>
-          <TabsList>
-            <TabsTrigger value="supplier">Supplier</TabsTrigger>
-            <TabsTrigger value="company">Supplier company</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
 
-      {/* 5 KPI cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
-        {SUP_KPIS.map(k => (
-          <Card key={k.label}>
-            <CardHeader>
-              <CardDescription style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
-                {k.label} <I.help size={11} />
-              </CardDescription>
-              <CardTitle style={{ fontSize: 22, fontWeight: 500, marginTop: 2 }}>{k.value}</CardTitle>
+        {/* 5 KPI cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
+          {SUP_KPIS.map(k => (
+            <Card key={k.label}>
+              <CardHeader>
+                <CardDescription style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                  {k.label} <I.help size={11} />
+                </CardDescription>
+                <CardTitle style={{ fontSize: 22, fontWeight: 500, marginTop: 2 }}>{k.value}</CardTitle>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+
+        {/* Chart + top suppliers */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+          <Card>
+            <CardHeader style={{ paddingBottom: 0 }}>
+              <CardAction>
+                <Tabs value={period} onValueChange={setPeriod}>
+                  <TabsList>
+                    <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                    <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
+                    <TabsTrigger value="yearly">Yearly</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </CardAction>
             </CardHeader>
+            <CardContent>
+              <SupSpendChart />
+            </CardContent>
           </Card>
-        ))}
-      </div>
 
-      {/* Chart + top suppliers */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
-        <Card>
-          <CardHeader style={{ paddingBottom: 0 }}>
-            <CardAction>
-              <Tabs value={period} onValueChange={setPeriod}>
-                <TabsList>
-                  <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                  <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
-                  <TabsTrigger value="yearly">Yearly</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            <SupSpendChart />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle style={{ fontSize: 16, fontWeight: 500 }}>Top suppliers by spend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SupTopChart />
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle style={{ fontSize: 16, fontWeight: 500 }}>Top suppliers by spend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SupTopChart />
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Suppliers table */}
