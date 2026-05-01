@@ -11242,9 +11242,9 @@ function Dashboard({ tab, setTab }) {
           </div>
         </div>
 
-        {/* ── Events table — outside charts container, 40px below ── */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        {/* ── Events table — toolbar inside table container ── */}
+        <div data-slot="table-container">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 0 12px 0' }}>
             <span style={{ fontSize: 16, fontWeight: 500 }}>Events</span>
             <div style={{ flex: 1 }} />
             <div style={{ position: 'relative' }}>
@@ -11253,7 +11253,7 @@ function Dashboard({ tab, setTab }) {
             </div>
             <Button variant="ghost" size="sm"><I.upload size={12} /> Export</Button>
           </div>
-          <Table>
+          <table data-slot="table">
             <TableHeader>
               <TableRow>
                 <TableHead style={{ width: 32 }}><Checkbox /></TableHead>
@@ -11292,7 +11292,7 @@ function Dashboard({ tab, setTab }) {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </table>
         </div>
       </div>
       ) : (
