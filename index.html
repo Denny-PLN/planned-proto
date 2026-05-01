@@ -2070,8 +2070,25 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   max-width: 1024px;
   width: 100%;
 }
-/* Hide horizontal scrollbar on all table containers */
-[data-slot="table-container"] { overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+/* Hide horizontal scrollbar on all table containers + edge fade mask
+   --tbl-fade-l / --tbl-fade-r are set by App.jsx based on scroll position */
+[data-slot="table-container"] {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  --tbl-fade-l: 0px;
+  --tbl-fade-r: 0px;
+  -webkit-mask-image: linear-gradient(to right,
+    transparent 0,
+    #000 var(--tbl-fade-l),
+    #000 calc(100% - var(--tbl-fade-r)),
+    transparent 100%);
+          mask-image: linear-gradient(to right,
+    transparent 0,
+    #000 var(--tbl-fade-l),
+    #000 calc(100% - var(--tbl-fade-r)),
+    transparent 100%);
+}
 [data-slot="table-container"]::-webkit-scrollbar { display: none; }
 
 /* Tighten header → table spacing inside policies */
@@ -14361,6 +14378,36 @@ function App() {
     const h = () => _bumpRC((n) => n + 1);
     window.addEventListener('routines-chat-state', h);
     return () => window.removeEventListener('routines-chat-state', h);
+  }, []);
+
+  // Edge fades for overflowing tables — show right fade if there's hidden content,
+  // left fade if scrolled past the start. Uses CSS mask vars updated on scroll/resize.
+  useEffectA(() => {
+    const tracked = new WeakSet();
+    const update = (el) => {
+      const overflows = el.scrollWidth > el.clientWidth + 1;
+      const atStart = el.scrollLeft <= 1;
+      const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth - 1;
+      el.style.setProperty('--tbl-fade-l', overflows && !atStart ? '40px' : '0px');
+      el.style.setProperty('--tbl-fade-r', overflows && !atEnd ? '40px' : '0px');
+    };
+    const attach = (el) => {
+      if (tracked.has(el)) return;
+      tracked.add(el);
+      const onScroll = () => update(el);
+      el.addEventListener('scroll', onScroll, { passive: true });
+      const ro = new ResizeObserver(() => update(el));
+      ro.observe(el);
+      if (el.firstElementChild) ro.observe(el.firstElementChild);
+      update(el);
+    };
+    const scan = () => document.querySelectorAll('[data-slot="table-container"]').forEach(attach);
+    scan();
+    const mo = new MutationObserver(scan);
+    mo.observe(document.body, { childList: true, subtree: true });
+    const onWinResize = () => scan();
+    window.addEventListener('resize', onWinResize);
+    return () => { mo.disconnect(); window.removeEventListener('resize', onWinResize); };
   }, []);
   const [focusMode, setFocusMode] = useStateA(false);
   const [sideChatW, setSideChatW] = useStateA(() => {
