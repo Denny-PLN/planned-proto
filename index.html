@@ -1587,23 +1587,21 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 
 .ins-page {
   display: flex; flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 28px;
   width: 100%;
-  padding: 4px 0 8px;
+  padding: 20px 24px 24px;
 }
 
-/* Most children constrain themselves to 1024px, centered — EXCEPT the chart group which goes edge-to-edge */
+/* All admin sections fill the available width — page padding lives on the parent */
 .ins-page > .ins-vitals,
 .ins-page > .ins-recap,
 .ins-page > .ins-op-split,
 .ins-page > .ins-section {
-  max-width: 1024px;
   width: 100%;
 }
 .ins-page > .ins-chart-group {
   width: 100%;
-  max-width: 1024px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1665,7 +1663,6 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  max-width: 1024px;
 }
 .metric-card {
   display: flex;
@@ -1761,7 +1758,6 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   justify-content: space-between;
   gap: 24px;
   padding: 0;
-  max-width: 1024px;
   width: 100%;
   margin: 0 auto;
 }
@@ -2059,15 +2055,14 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 
 .pol-page {
   display: flex; flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 28px;
   width: 100%;
-  padding: 4px 0 8px;
+  padding: 20px 24px 24px;
 }
 
-/* All children constrain to 1024px, centered */
+/* Children fill available width */
 .pol-page > * {
-  max-width: 1024px;
   width: 100%;
 }
 /* Hide horizontal scrollbar on all table containers + edge fade mask
@@ -2112,11 +2107,9 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   max-width: none;
 }
 
-/* Recap inside chart-group: center at 1024px like other modules */
+/* Recap inside chart-group fills available width */
 .pol-chart-group > .ins-recap {
-  max-width: 1024px;
   width: 100%;
-  margin: 0 auto;
 }
 
 .pol-chart-group {
@@ -2133,9 +2126,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   justify-content: space-between;
   gap: 24px;
   padding: 0;
-  max-width: 1024px;
   width: 100%;
-  margin: 0 auto;
 }
 
 /* Full-bleed chart wrapper */
@@ -2168,12 +2159,10 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   font-variant-numeric: tabular-nums;
 }
 
-/* Recap foot — centered at 1024px */
+/* Recap foot fills available width */
 .pol-chart-foot {
   display: flex; align-items: flex-start; gap: 10px;
-  max-width: 1024px;
   width: 100%;
-  margin: 0 auto;
   padding: 12px 0 0;
   font: 400 13px/1.5 var(--font-sans);
   color: var(--muted-foreground);
@@ -2689,14 +2678,13 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 .dash {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   background: #fff;
   min-height: 100%;
   padding: 20px 24px 24px;
 }
-/* Constrain content width to match Insights / Policies (1024px) */
+/* Children fill available width — page padding lives on .dash */
 .dash > * {
-  max-width: 1024px;
   width: 100%;
 }
 
