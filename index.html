@@ -14902,7 +14902,9 @@ function SideChatPane({ chat, onClose, onToggleSidebar }) {
     <div className="side-chat">
       <div className="sc-head">
         <div className="sc-title">Agent chat</div>
-        <button className="icon-btn" style={{ marginLeft: 'auto' }} onClick={onClose} title="Minimize chat"><I.arrowLeftDouble size={16} /></button>
+        <button className="icon-btn" title="Export chat"
+          aria-label="Export chat"><I.upload size={15} /></button>
+        <button className="icon-btn" onClick={onClose} title="Minimize chat"><I.arrowLeftDouble size={16} /></button>
       </div>
       <div className="sc-feed">
         <div className="msg user">
