@@ -7249,11 +7249,11 @@ window.DATA = {
     { title: 'Require 3 quotes for events over $25K', desc: 'Only 34% of events collected competitive quotes. Those that did saved 18% more.', impact: '-$12k/Q', impactColor: 'up' },
   ],
   activePolicies: [
-    { id: 'p1', name: 'Require 3 quotes for events over $25K', trigger: 'Event is created', guards: '4 guards', type: 'Approval guard', compliance: '100% compliance', on: true },
-    { id: 'p2', name: 'Negotiate a Hyatt preferred rate', trigger: 'Event is created', guards: '4 guards', type: 'Approval guard', compliance: '100% compliance', on: true },
-    { id: 'p3', name: 'Fix room block over-estimation', trigger: 'Event is created', guards: '4 guards', type: 'Approval guard', compliance: '100% compliance', on: true },
-    { id: 'p4', name: 'Venue contract tracker', trigger: 'Alert when contracts are expiring within 7 days', guards: null, type: null, compliance: null, scope: 'TechCrunch Disrupt', schedule: 'Every day at 9AM', delivery: 'Inbox', on: false },
-    { id: 'p5', name: 'Mandate AI-first venue sourcing', trigger: 'Event is created', guards: '4 guards', type: 'Approval guard', compliance: '100% compliance', on: true },
+    { id: 'p1', name: 'Require 3 quotes for events over $25K', trigger: 'Sourcing starts', cond: 'Budget ≥ $25,000', action: 'Require 3 supplier quotes', type: 'Approval guard', compliance: '100% compliance', on: true },
+    { id: 'p2', name: 'Negotiate a Hyatt preferred rate', trigger: 'Booking submitted', cond: 'Supplier = Hyatt', action: 'Apply preferred rate', type: 'Auto-apply', compliance: '100% compliance', on: true },
+    { id: 'p3', name: 'Fix room block over-estimation', trigger: 'Event is created', cond: 'Headcount ≥ 15', action: 'Auto-cap room block at +10%', type: 'Auto-apply', compliance: '100% compliance', on: true },
+    { id: 'p4', name: 'Venue contract tracker', trigger: 'Daily 9 AM check', cond: 'Contract expires < 7 days', action: 'Notify contract owner', type: 'Notification', compliance: null, scope: 'TechCrunch Disrupt', schedule: 'Every day at 9AM', delivery: 'Inbox', on: false },
+    { id: 'p5', name: 'Mandate AI-first venue sourcing', trigger: 'Sourcing starts', cond: 'Any new event', action: 'Run AI sourcing first', type: 'Auto-apply', compliance: '100% compliance', on: true },
   ],
   insights: {
     scores: { overall: 68, efficiency: 68, compliance: 88, activity: 68 },
@@ -10004,9 +10004,6 @@ function PoliciesLanding({ policies, pendingPolicies, togglePolicy, openDetail, 
                       </TableRow>
                     );
                   }
-                  const detail = p.guards
-                    ? `${p.trigger} · ${p.guards} · ${p.type}`
-                    : p.trigger || p.schedule || '';
                   return (
                     <TableRow key={p.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(p.id)}>
                       <TableCell>
@@ -10018,7 +10015,20 @@ function PoliciesLanding({ policies, pendingPolicies, togglePolicy, openDetail, 
                           {p.on ? 'Active' : 'Disabled'}
                         </span>
                       </TableCell>
-                      <TableCell style={{ color: 'var(--muted-foreground)', fontSize: 12 }}>{detail}</TableCell>
+                      <TableCell style={{ fontSize: 12 }}>
+                        {p.cond && p.action ? (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 6, background: 'color-mix(in oklab, var(--foreground) 6%, transparent)', color: 'var(--foreground)', font: '500 12px/1.3 var(--font-sans)', whiteSpace: 'nowrap' }}>
+                              <span style={{ color: 'var(--muted-foreground)', font: '400 11px/1.3 var(--font-sans)' }}>If</span>
+                              {p.cond}
+                            </span>
+                            <span style={{ color: 'var(--muted-foreground)' }}>→</span>
+                            <span style={{ color: 'var(--foreground)', font: '500 12px/1.3 var(--font-sans)', whiteSpace: 'nowrap' }}>{p.action}</span>
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--muted-foreground)' }}>{p.trigger || p.schedule || ''}</span>
+                        )}
+                      </TableCell>
                       <TableCell style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <button className={`tog ${p.on ? 'on' : ''}`} style={{ marginRight: 6 }}
                           onClick={e => { e.stopPropagation(); togglePolicy(p.id); }} />
@@ -14362,7 +14372,14 @@ function App() {
     return DATA.activeRoutines;
   });
   const [policies, setPolicies] = useStateA(() => {
-    try { const v = localStorage.getItem('app_policies'); if (v) return JSON.parse(v); } catch (e) {}
+    try {
+      const v = localStorage.getItem('app_policies');
+      if (v) {
+        const parsed = JSON.parse(v);
+        // migrate older saved shape (no `cond`/`action`) → reload defaults
+        if (Array.isArray(parsed) && parsed[0] && parsed[0].cond) return parsed;
+      }
+    } catch (e) {}
     return DATA.activePolicies;
   });
   useEffectA(() => { try { localStorage.setItem('app_routines', JSON.stringify(routines)); } catch (e) {} }, [routines]);
