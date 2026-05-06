@@ -433,8 +433,8 @@ button { font-family: inherit; }
 .tb-right .icon-btn:hover { background: var(--muted); color: var(--foreground); }
 
 .content { flex: 1; overflow: auto; }
-.content-inner { max-width: 920px; margin: 0 auto; padding: 28px 28px 80px; }
-.content-wide { max-width: 1180px; margin: 0 auto; padding: 28px 28px 80px; }
+.content-inner { width: 100%; padding: 32px; }
+.content-wide { width: 100%; padding: 32px; }
 
 /* ===== Inputs / primitives ===== */
 .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px;
@@ -1943,13 +1943,9 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
   scrollbar-gutter: stable;
 }
 .content-wide {
-  max-width: 1180px;
-  margin: 0 auto;
   width: 100%;
 }
 .content-inner {
-  max-width: 920px;
-  margin: 0 auto;
   width: 100%;
 }
 .home-dash { max-width: 1080px; margin: 0 auto; padding: 8px 0; width: 100%; }
@@ -4656,7 +4652,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 .sidebar.mini .mode-switch { display: none; }
 
 /* ========== Home Dashboard (Ellie home) ========== */
-.home-dash { max-width: 980px; margin: 0 auto; padding: 60px 40px 80px; }
+.home-dash { width: 100%; padding: 32px; }
 .home-greet { font: 400 28px/1.15 var(--font-sans); letter-spacing: -0.015em; color: var(--foreground); margin: 0 0 24px; }
 .home-greet b { font-weight: 500; }
 
@@ -5101,7 +5097,7 @@ button:active, .btn:active, .cta-btn:active, .sc-action:active, .chip:active, .i
 .content.content-event > .event-shell { height: 100%; }
 
 /* Out-of-scope placeholder */
-.home-stub { max-width: 640px; margin: 0 auto; padding: 120px 40px; text-align: center; color: var(--muted-foreground); }
+.home-stub { width: 100%; padding: 32px; text-align: center; color: var(--muted-foreground); }
 .home-stub h1 { font: 400 22px/1.2 var(--font-sans); color: var(--foreground); margin: 0 0 8px; }
 .home-stub p { font: 400 13px/1.5 var(--font-sans); margin: 0 0 20px; }
 
