@@ -8354,6 +8354,7 @@ function ShadcnChart({
   footer = null,
   overlayKeys = null,           // [{id, label, color}] — drawn as faint lines behind active line
   tooltipBreakdown = null,      // (activeId, row) => Array<{label, value, contribution?, color}>
+  topRight = null,              // node rendered at top-right corner of chart content area
 }) {
   const _R = window.Recharts || {};
   const _RC = _R.ResponsiveContainer;
@@ -8415,7 +8416,12 @@ function ShadcnChart({
       </div>
 
       {/* CHART */}
-      <div className="sc-card-content" style={{ height }}>
+      <div className="sc-card-content" style={{ height, position: 'relative' }}>
+        {topRight && (
+          <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 2 }}>
+            {topRight}
+          </div>
+        )}
         <_RC width="100%" height="100%">
           <_LC
             data={data}
@@ -9905,17 +9911,19 @@ function PoliciesLanding({ policies, pendingPolicies, togglePolicy, openDetail, 
             <div className="sc-card-title">Policies insights</div>
             <div className="sc-card-desc">{`Showing ${meta.label.toLowerCase()} over time`}</div>
           </div>
-          <div className="sc-range-pills" role="tablist" style={{ marginBottom: 0 }}>
-            {['1D','1W','1M','3M','YTD','1Y','5Y','All'].map(r =>
-              <button key={r} role="tab" data-active={range === r} className="sc-range-pill" onClick={() => setRange(r)}>{r}</button>
-            )}
-          </div>
         </div>
         {ShadcnChart &&
           <ShadcnChart
             metrics={POL_METRICS} activeId={active} onActive={setActive}
             data={chartData} valueFormatter={valueFormatter}
             color="var(--chart-2)" height={280}
+            topRight={
+              <div className="sc-range-pills" role="tablist" style={{ marginBottom: 0 }}>
+                {['1D','1W','1M','3M','YTD','1Y','5Y','All'].map(r =>
+                  <button key={r} role="tab" data-active={range === r} className="sc-range-pill" onClick={() => setRange(r)}>{r}</button>
+                )}
+              </div>
+            }
             recap={
               <div className="ins-recap ins-recap--embedded">
                 <div className="ins-recap-head">
@@ -10640,13 +10648,6 @@ function Insights({ onAskAI, onOpenSuggested }) {
             <div className="sc-card-title">Program insights</div>
             <div className="sc-card-desc">{`Showing ${meta.label.toLowerCase()} over time`}</div>
           </div>
-          <div className="sc-range-pills" role="tablist" style={{ marginBottom: 0 }}>
-            {['1D', '1W', '1M', '3M', 'YTD', '1Y', '5Y', 'All'].map((r) =>
-            <button key={r} role="tab" data-active={range === r} className="sc-range-pill" onClick={() => setRange(r)}>
-                {r}
-              </button>
-            )}
-          </div>
         </div>
         {ShadcnChart &&
         <ShadcnChart
@@ -10659,6 +10660,15 @@ function Insights({ onAskAI, onOpenSuggested }) {
           height={280}
           overlayKeys={overlayKeys}
           tooltipBreakdown={tooltipBreakdown}
+          topRight={
+            <div className="sc-range-pills" role="tablist" style={{ marginBottom: 0 }}>
+              {['1D', '1W', '1M', '3M', 'YTD', '1Y', '5Y', 'All'].map((r) =>
+              <button key={r} role="tab" data-active={range === r} className="sc-range-pill" onClick={() => setRange(r)}>
+                  {r}
+                </button>
+              )}
+            </div>
+          }
           recap={
           <div className="ins-recap ins-recap--embedded">
                 <div className="ins-recap-head">
