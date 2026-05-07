@@ -404,6 +404,22 @@ button { font-family: inherit; }
   overflow: hidden;
 }
 .topbar { height: 46px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px 0 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+
+/* Secondary header bar — sits under .topbar, holds page-level tabs */
+.sub-topbar {
+  display: flex;
+  align-items: stretch;
+  padding: 0 32px;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sub-topbar::-webkit-scrollbar { display: none; }
+.sub-topbar [data-slot="tabs-list"][data-variant="line"] [data-slot="tabs-trigger"] {
+  height: 42px;
+}
 .tb-left { display:flex; align-items:center; gap: 10px; }
 .tb-left .icon-btn { background: none; border: none; cursor: pointer; color: var(--muted-foreground); padding: 6px; border-radius: 6px; display: inline-flex; }
 .tb-left .icon-btn:hover { background: var(--muted); color: var(--foreground); }
@@ -11170,18 +11186,6 @@ function Dashboard({ tab, setTab }) {
 
   return (
     <div className="dash" style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
-      {/* Tabs */}
-      <Tabs value={primaryTab} onValueChange={setPrimaryTab}>
-        <TabsList variant="line">
-          <TabsTrigger value="events-report">Events report</TabsTrigger>
-          <TabsTrigger value="savings">Savings</TabsTrigger>
-          <TabsTrigger value="time-savings">Time savings</TabsTrigger>
-          <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
-          <TabsTrigger value="internal-spaces">Internal spaces</TabsTrigger>
-          <TabsTrigger value="room-blocks">Room blocks</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       {primaryTab === 'savings' ? <DashboardSavings /> : primaryTab === 'time-savings' ? <DashboardTimeSavings /> : primaryTab === 'suppliers' ? <DashboardSuppliers /> : primaryTab === 'internal-spaces' ? <DashboardInternalSpaces /> : primaryTab === 'room-blocks' ? <DashboardRoomBlocks /> : primaryTab === 'events-report' ? (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
         {/* Charts + metrics section, inner gap 16 */}
@@ -14761,6 +14765,20 @@ function App() {
               <I.plus size={12} /> New event
             </button> :
           null} />}
+        {!inChatMode && !isHome && adminSection === 'dashboard' && (
+          <div className="sub-topbar">
+            <Tabs value={dashboardTab} onValueChange={setDashboardTab}>
+              <TabsList variant="line">
+                <TabsTrigger value="events-report">Events report</TabsTrigger>
+                <TabsTrigger value="savings">Savings</TabsTrigger>
+                <TabsTrigger value="time-savings">Time savings</TabsTrigger>
+                <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
+                <TabsTrigger value="internal-spaces">Internal spaces</TabsTrigger>
+                <TabsTrigger value="room-blocks">Room blocks</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        )}
         <div className={`content ${isHome && openEvent ? 'content-event' : ''}`} style={{ padding: "0px" }}>
           {body}
         </div>
