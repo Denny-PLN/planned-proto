@@ -338,24 +338,17 @@ button { font-family: inherit; }
 .sc-action:hover { background: var(--muted); }
 .sc-action.primary { background: var(--muted); font-weight: 500; }
 
-/* Suggested-action chips for new chat — wraps to new line, scrollable horizontally */
-.sc-actions-row { flex-direction: row; flex-wrap: wrap; gap: 6px; padding: 8px 16px 0; }
-.sc-suggest {
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 6px 12px;
-  font: 400 12.5px/1 var(--font-sans);
-  color: var(--foreground);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
+/* Suggested-action row for new chat — horizontal scroll, shadcn Buttons inside */
+.sc-actions-row {
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 6px;
-  white-space: nowrap;
-  transition: background 120ms ease, border-color 120ms ease;
+  padding: 8px 16px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-.sc-suggest svg { color: var(--muted-foreground); }
-.sc-suggest:hover { background: var(--muted); border-color: color-mix(in oklab, var(--foreground) 15%, transparent); }
+.sc-actions-row::-webkit-scrollbar { display: none; }
 .sc-action.primary svg { color: var(--foreground); }
 .sc-input { padding: 10px 16px 14px; flex-shrink: 0; }
 .sc-input .box { display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 6px 6px 6px 12px; }
@@ -14961,7 +14954,7 @@ function SideChatPane({ chat, onClose, onToggleSidebar }) {
       {isNewChat ? (
         <div className="sc-actions sc-actions-row">
           {newChatSuggestions.map((s, i) => (
-            <button key={i} className="sc-suggest"><s.icon size={13} /> {s.label}</button>
+            <Button key={i} variant="outline" size="sm"><s.icon size={13} /> {s.label}</Button>
           ))}
         </div>
       ) : (
