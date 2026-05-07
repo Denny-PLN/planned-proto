@@ -9775,7 +9775,7 @@ window.RoutineDetailFlyout = RoutineDetailFlyout;
   <script type="text/babel">
 // Policies — v1 read-only / request-setup flow
 // Lifecycle: Suggested → (request via email) → Pending → (Dylan activates) → Active
-const { useState: useStateP } = React;
+const { useState: useStateP, useRef: useRefP } = React;
 
 // ─── Chart data ───────────────────────────────────────────────────────────────
 function _polRng(seed) {
@@ -10430,6 +10430,705 @@ function PolicyDetailFlyout({ onClose, onRequestSetup, onCancelPending, mode, po
 window.PoliciesLanding = PoliciesLanding;
 window.PolicyDetailFlyout = PolicyDetailFlyout;
 window.Sparkline = Sparkline;
+
+const ADMINS = [
+{ id: 'e', name: 'Emma Chen', color: 'var(--decorative-lavender-600)', initial: 'E' },
+{ id: 'd', name: 'Dennis L.', color: 'var(--decorative-butterfly-pea-600)', initial: 'D' },
+{ id: 'r', name: 'Ravi Patel', color: 'var(--decorative-mint-600)', initial: 'R' },
+{ id: 's', name: 'Sofia Gómez', color: 'var(--decorative-champagne-600)', initial: 'S' },
+{ id: 'm', name: 'Marcus Lee', color: 'var(--decorative-matcha-600)', initial: 'M' }];
+
+
+const TRIGGER_OPTS = [
+{ id: 'created', icon: I.calendar, t: 'Event is created', d: 'Any new event in the workspace' },
+{ id: 'sourced', icon: I.bolt, t: 'Sourcing starts', d: 'A planner begins sourcing a venue' },
+{ id: 'booked', icon: I.shieldCheck, t: 'Booking confirmed', d: 'Venue or vendor contract signed' },
+{ id: 'invoice', icon: I.email, t: 'Invoice submitted', d: 'Any invoice lands in the queue' }];
+
+const FIELD_OPTS = ['Budget', 'Headcount', 'Event type', 'Location', 'Vendor'];
+const OP_OPTS = ['≥', '>', '=', '≤', '<'];
+const TYPE_OPTS = ['Offsite', 'Onsite', 'Client dinner', 'Conference', 'Internal'];
+const CONJ_OPTS = ['And', 'Or'];
+
+const TEMPLATES = [
+{
+  id: 'large-events',
+  icon: I.shieldCheck,
+  name: 'Approval for large events',
+  summary: 'Require admin sign-off when budget ≥ $20k',
+  accent: 'lavender',
+  wf: {
+    name: 'Approval for large events',
+    trigger: 'created',
+    conds: [
+    { id: 1, conj: 'If', field: 'Budget', op: '≥', value: '$20,000' },
+    { id: 2, conj: 'And', field: 'Event type', op: 'is', value: 'Offsite' }],
+
+    admins: ['e', 'd', 'r', 's', 'm'],
+    requireMode: 'Require any',
+    fallback: 'Auto-approve'
+  }
+},
+{
+  id: 'three-quotes',
+  icon: I.shield,
+  name: 'Require 3 quotes for sourcing',
+  summary: 'Planners must submit 3 vendor quotes per RFP',
+  accent: 'matcha',
+  wf: {
+    name: 'Require 3 quotes for sourcing',
+    trigger: 'sourced',
+    conds: [
+    { id: 1, conj: 'If', field: 'Budget', op: '≥', value: '$5,000' }],
+
+    admins: ['e', 'd'],
+    requireMode: 'Require any',
+    fallback: 'Notify owner'
+  }
+},
+{
+  id: 'room-block',
+  icon: I.bell,
+  name: 'Auto-room block for big groups',
+  summary: 'Reserve a room block when headcount ≥ 50',
+  accent: 'champagne',
+  wf: {
+    name: 'Auto-room block for big groups',
+    trigger: 'created',
+    conds: [
+    { id: 1, conj: 'If', field: 'Headcount', op: '≥', value: '50' }],
+
+    admins: ['d'],
+    requireMode: 'Require any',
+    fallback: 'Auto-approve'
+  }
+},
+{
+  id: 'vendor-risk',
+  icon: I.sparkle,
+  name: 'Vendor risk review',
+  summary: 'Flag new vendors for compliance review',
+  accent: 'lavender',
+  wf: {
+    name: 'Vendor risk review',
+    trigger: 'sourced',
+    conds: [
+    { id: 1, conj: 'If', field: 'Vendor', op: 'is', value: 'Offsite' }],
+
+    admins: ['r', 's'],
+    requireMode: 'Require any',
+    fallback: 'Notify owner'
+  }
+},
+{
+  id: 'client-dinner',
+  icon: I.shield,
+  name: 'Executive client dinners',
+  summary: 'Route client dinners > $1k through exec approval',
+  accent: 'matcha',
+  wf: {
+    name: 'Executive client dinners',
+    trigger: 'created',
+    conds: [
+    { id: 1, conj: 'If', field: 'Event type', op: 'is', value: 'Client dinner' },
+    { id: 2, conj: 'And', field: 'Budget', op: '≥', value: '$1,000' }],
+
+    admins: ['e'],
+    requireMode: 'Require any',
+    fallback: 'Notify owner'
+  }
+}];
+
+
+// Policy composer — Routines-style wizard with templates, prompt, recipe cards
+function PoliciesChat({ onClose, onSave, initialPolicy }) {
+  // Seed wf from a policy being edited, or blank
+  const seedWf = () => {
+    if (initialPolicy?._raw) return { ...initialPolicy._raw };
+    if (initialPolicy) {
+      // Best-effort back-fill from summary
+      const trig = TRIGGER_OPTS.find(t => t.t === initialPolicy.trigger)?.id || 'created';
+      return {
+        name: initialPolicy.name || '',
+        desc: initialPolicy.desc || initialPolicy.name || '',
+        trigger: trig,
+        conds: [],
+        admins: [],
+        requireMode: 'Require any',
+        fallback: 'Auto-approve',
+      };
+    }
+    return {
+      name: '',
+      desc: '',
+      trigger: 'created',
+      conds: [],
+      admins: [],
+      requireMode: 'Require any',
+      fallback: 'Auto-approve',
+    };
+  };
+  const [wf, setWf] = useStateP(seedWf);
+  const [openMenu, setOpenMenu] = useStateP(null);
+  const [open, setOpen] = useStateP({ when: false, match: false, decide: false, fallback: false });
+  const [activeTemplate, setActiveTemplate] = useStateP(null);
+  const [lastFilledPrompt, setLastFilledPrompt] = useStateP('');
+  const [saved, setSaved] = useStateP(false);
+  const nameRef = useRefP(null);
+
+  React.useEffect(() => {
+    const t = setTimeout(() => nameRef.current && nameRef.current.focus(), 50);
+    return () => clearTimeout(t);
+  }, []);
+
+  const set = (patch) => setWf(w => ({ ...w, ...patch }));
+  const toggle = (key) => setOpen(o => ({ ...o, [key]: !o[key] }));
+  const closeAll = () => setOpen({ when: false, match: false, decide: false, fallback: false });
+
+  // ── Templates (Routines-style cards) ─────────────────────
+  const TPLS = [
+    { icon: I.shieldCheck, title: 'Approval for large events', desc: 'Require admin sign-off when budget ≥ $20k',
+      apply: { name: 'Approval for large events', desc: 'When an event is created with budget ≥ $20,000, require admin approval.', trigger: 'created',
+        conds: [{ id: 1, conj: 'If', field: 'Budget', op: '≥', value: '$20,000' }, { id: 2, conj: 'And', field: 'Event type', op: 'is', value: 'Offsite' }],
+        admins: ['e','d','r'], requireMode: 'Require any', fallback: 'Auto-approve' } },
+    { icon: I.shield, title: '3 quotes for sourcing', desc: 'Planners must submit 3 vendor quotes per RFP',
+      apply: { name: 'Require 3 quotes for sourcing', desc: 'When sourcing starts on a budget ≥ $5,000, require 3 vendor quotes.', trigger: 'sourced',
+        conds: [{ id: 1, conj: 'If', field: 'Budget', op: '≥', value: '$5,000' }],
+        admins: ['e','d'], requireMode: 'Require any', fallback: 'Notify owner' } },
+    { icon: I.bell, title: 'Auto room block for big groups', desc: 'Reserve a room block when headcount ≥ 50',
+      apply: { name: 'Auto-room block for big groups', desc: 'When an event is created with headcount ≥ 50, auto-reserve a room block.', trigger: 'created',
+        conds: [{ id: 1, conj: 'If', field: 'Headcount', op: '≥', value: '50' }],
+        admins: ['d'], requireMode: 'Require any', fallback: 'Auto-approve' } },
+    { icon: I.sparkle, title: 'Vendor risk review', desc: 'Flag new vendors for compliance review',
+      apply: { name: 'Vendor risk review', desc: 'When sourcing starts with a new vendor, route through compliance review.', trigger: 'sourced',
+        conds: [{ id: 1, conj: 'If', field: 'Vendor', op: 'is', value: 'Offsite' }],
+        admins: ['r','s'], requireMode: 'Require any', fallback: 'Notify owner' } },
+    { icon: I.shield, title: 'Executive client dinners', desc: 'Route client dinners > $1k through exec approval',
+      apply: { name: 'Executive client dinners', desc: 'When a client dinner is created above $1,000, route through executive approval.', trigger: 'created',
+        conds: [{ id: 1, conj: 'If', field: 'Event type', op: 'is', value: 'Client dinner' }, { id: 2, conj: 'And', field: 'Budget', op: '≥', value: '$1,000' }],
+        admins: ['e'], requireMode: 'Require any', fallback: 'Notify owner' } },
+    { icon: I.email, title: 'Invoice review', desc: 'Flag invoices over $10k for review',
+      apply: { name: 'Invoice review threshold', desc: 'When an invoice is submitted above $10,000, require review by finance.', trigger: 'invoice',
+        conds: [{ id: 1, conj: 'If', field: 'Budget', op: '≥', value: '$10,000' }],
+        admins: ['e','d'], requireMode: 'Require any', fallback: 'Auto-approve' } },
+  ];
+
+  const applyTemplate = (tpl) => {
+    setWf(w => ({ ...w, ...tpl.apply }));
+    setActiveTemplate(tpl);
+    setLastFilledPrompt(tpl.apply.desc || '');
+    closeAll();
+  };
+  const resetForm = () => {
+    setWf({ name: '', desc: '', trigger: 'created', conds: [], admins: [], requireMode: 'Require any', fallback: 'Auto-approve' });
+    setActiveTemplate(null);
+    setLastFilledPrompt('');
+    closeAll();
+    setTimeout(() => nameRef.current && nameRef.current.focus(), 50);
+  };
+
+  // ── Magic fill: parse prompt → wf ────────────────────────
+  const magicFill = () => {
+    const t = (wf.desc || '').toLowerCase();
+    const next = { ...wf };
+    // Trigger
+    if (/sourc/.test(t)) next.trigger = 'sourced';
+    else if (/invoice/.test(t)) next.trigger = 'invoice';
+    else if (/approv/.test(t)) next.trigger = 'approval';
+    else next.trigger = 'created';
+    // Conditions (budget & headcount detection)
+    const conds = [];
+    const budget = t.match(/\$\s?([0-9]{1,3}(?:[,. ][0-9]{3})*|\d+\s?k)/i);
+    if (budget || /budget|cost|spend/.test(t)) {
+      const valRaw = budget ? budget[0].replace(/\s/g, '') : '$10,000';
+      const val = /k\b/i.test(valRaw) ? '$' + parseInt(valRaw.replace(/[^\d]/g, '')) * 1000 : valRaw;
+      conds.push({ id: Date.now(), conj: 'If', field: 'Budget', op: '≥', value: val.replace(/^\$/, '$').replace(/^\$(\d+)$/, (_,n)=> '$' + Number(n).toLocaleString()) });
+    }
+    const head = t.match(/(\d{2,4})\s*(people|attendees|guests|headcount)/);
+    if (head) {
+      conds.push({ id: Date.now()+1, conj: conds.length ? 'And' : 'If', field: 'Headcount', op: '≥', value: head[1] });
+    }
+    if (/client dinner/.test(t)) {
+      conds.push({ id: Date.now()+2, conj: conds.length ? 'And' : 'If', field: 'Event type', op: 'is', value: 'Client dinner' });
+    } else if (/offsite/.test(t)) {
+      conds.push({ id: Date.now()+3, conj: conds.length ? 'And' : 'If', field: 'Event type', op: 'is', value: 'Offsite' });
+    }
+    if (conds.length) next.conds = conds;
+    // Approvers
+    if (/exec|executive|ceo|cfo/.test(t)) next.admins = ['e'];
+    else if (/finance/.test(t)) next.admins = ['e', 'd'];
+    else if (/admin|approv/.test(t)) next.admins = ['e','d','r'];
+    // Fallback
+    if (/auto.?approve|auto approve/.test(t)) next.fallback = 'Auto-approve';
+    else if (/notify|alert|tell/.test(t)) next.fallback = 'Notify owner';
+    else if (/block|reject/.test(t)) next.fallback = 'Block';
+    // Name (heuristic: first 5 words capitalized)
+    if (!next.name) {
+      const cleaned = (wf.desc || '').replace(/^(when|if|whenever|every time)\s+/i, '').trim();
+      next.name = cleaned.split(/[,.]/)[0].split(/\s+/).slice(0, 7).join(' ');
+      next.name = next.name.charAt(0).toUpperCase() + next.name.slice(1);
+    }
+    setWf(next);
+    setLastFilledPrompt(wf.desc);
+    closeAll();
+  };
+
+  // ── Summary text for collapsed cards ─────────────────────
+  const trigOpt = TRIGGER_OPTS.find(o => o.id === wf.trigger);
+  const whenText = trigOpt ? trigOpt.t : '';
+  const matchText = wf.conds.length === 0 ? '' :
+    wf.conds.map((c, i) => `${i === 0 ? '' : c.conj + ' '}${c.field} ${c.op} ${c.value}`).join(' ');
+  const decideText = wf.admins.length === 0 ? '' :
+    `${wf.requireMode.replace('Require ', '')} of ${wf.admins.length} admin${wf.admins.length === 1 ? '' : 's'}`;
+  const fallbackText = wf.fallback;
+
+  // ── Examples ─────────────────────────────────────────────
+  const triggerExamples = TRIGGER_OPTS.slice(0, 3).map(o => ({ label: o.t, val: { trigger: o.id } }));
+  const matchExamples = [
+    { label: 'Budget ≥ $10k', val: { conds: [{ id: Date.now(), conj: 'If', field: 'Budget', op: '≥', value: '$10,000' }] } },
+    { label: 'Headcount ≥ 50', val: { conds: [{ id: Date.now()+1, conj: 'If', field: 'Headcount', op: '≥', value: '50' }] } },
+    { label: 'Offsite events', val: { conds: [{ id: Date.now()+2, conj: 'If', field: 'Event type', op: 'is', value: 'Offsite' }] } },
+  ];
+  const decideExamples = [
+    { label: 'Any of Emma, Dan', val: { requireMode: 'Require any', admins: ['e', 'd'] } },
+    { label: 'All execs', val: { requireMode: 'Require all', admins: ['e'] } },
+    { label: 'Finance team', val: { requireMode: 'Require any', admins: ['e','d'] } },
+  ];
+  const fallbackExamples = FALLBACK_OPTS.slice(0, 3).map(o => ({ label: o.t, val: { fallback: o.id } }));
+
+  // ── Save ─────────────────────────────────────────────────
+  const canSave = !!wf.name && !!wf.trigger;
+  const saveIt = (activate = true) => {
+    if (!canSave) return;
+    setSaved(true);
+    if (onSave) {
+      onSave({
+        id: initialPolicy?.id || ('p' + Date.now()),
+        name: wf.name || 'New policy',
+        desc: wf.desc,
+        trigger: TRIGGER_OPTS.find((t) => t.id === wf.trigger)?.t || 'Event is created',
+        guards: `${wf.conds.length} guard${wf.conds.length === 1 ? '' : 's'}`,
+        type: 'Approval guard',
+        compliance: '100% compliance',
+        on: initialPolicy ? initialPolicy.on : activate,
+        _raw: { ...wf },
+      });
+    }
+  };
+
+  const RC = window.RecipeCard;
+
+  return (
+    <div className="split solo">
+      <div className="split-right">
+        <div className="split-head">
+          <div className="crumb">
+            <span>Policies</span>
+            <I.chevron size={11} className="sep" />
+            <span className="cur">{initialPolicy ? 'Edit policy' : 'New policy'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button className="btn outline" style={{ height: 28, fontSize: 12 }} onClick={onClose}>Cancel</button>
+            <div className="save-split" style={{ position: 'relative', display: 'inline-flex' }}>
+              <button className="btn" style={{ height: 28, fontSize: 12, opacity: canSave ? 1 : 0.4, pointerEvents: canSave ? 'auto' : 'none', borderTopRightRadius: 0, borderBottomRightRadius: 0, paddingRight: 10 }}
+                onClick={() => saveIt(true)}>
+                <I.save size={12} /> {saved ? 'Saved' : 'Save'}
+              </button>
+              <button className="btn" style={{ height: 28, fontSize: 12, opacity: canSave ? 1 : 0.4, pointerEvents: canSave ? 'auto' : 'none', borderTopLeftRadius: 0, borderBottomLeftRadius: 0, paddingLeft: 6, paddingRight: 6, marginLeft: 1, borderLeft: '1px solid rgba(255,255,255,.25)' }}
+                onClick={(e) => { e.stopPropagation(); setOpenMenu(m => m === 'savemenu' ? null : 'savemenu'); }}
+                aria-label="Save options">
+                <I.chevronDown size={11} />
+              </button>
+              {openMenu === 'savemenu' && (
+                <div className="dd-menu" style={{ left: 'auto', right: 0, top: 'calc(100% + 4px)', minWidth: 200, padding: 4 }}>
+                  <div className="dd-item" onClick={(e) => { e.stopPropagation(); setOpenMenu(null); saveIt(true); }}
+                    style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 10px' }}>
+                    <div style={{ font: '500 12.5px/1.2 var(--font-sans)' }}>{initialPolicy ? 'Save changes' : 'Save & activate'}</div>
+                    <div style={{ font: '400 11px/1.3 var(--font-sans)', color: 'var(--muted-foreground)' }}>Enforce immediately on new events</div>
+                  </div>
+                  <div className="dd-item" onClick={(e) => { e.stopPropagation(); setOpenMenu(null); saveIt(false); }}
+                    style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 10px' }}>
+                    <div style={{ font: '500 12.5px/1.2 var(--font-sans)' }}>Save as draft</div>
+                    <div style={{ font: '400 11px/1.3 var(--font-sans)', color: 'var(--muted-foreground)' }}>Keep editing — won't enforce yet</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="rt-solo" onClick={() => setOpenMenu(null)}>
+          <div className="pref rt-solo-body rt-recipe">
+            {/* Templates strip */}
+            <div className="rt-tpl-top">
+              <div className="rt-tpl-top-head">
+                <div className="rt-tpl-top-label">Start from a template</div>
+                <div className="rt-tpl-nav">
+                  <button type="button" className="rt-tpl-nav-btn" aria-label="Previous"
+                    onClick={(e) => { const r = e.currentTarget.closest('.rt-tpl-top').querySelector('.rt-tpl-scroll'); r && r.scrollBy({ left: -260, behavior: 'smooth' }); }}>
+                    <I.chevron size={12} style={{transform: 'rotate(180deg)'}} />
+                  </button>
+                  <button type="button" className="rt-tpl-nav-btn" aria-label="Next"
+                    onClick={(e) => { const r = e.currentTarget.closest('.rt-tpl-top').querySelector('.rt-tpl-scroll'); r && r.scrollBy({ left: 260, behavior: 'smooth' }); }}>
+                    <I.chevron size={12} />
+                  </button>
+                </div>
+              </div>
+              <div className="rt-tpl-scroll">
+                {TPLS.map((t, i) => {
+                  const isActive = activeTemplate && activeTemplate.title === t.title;
+                  return (
+                    <button key={i} type="button" className={`rt-tpl ${isActive ? 'active' : ''}`} onClick={() => applyTemplate(t)}>
+                      <div className="rt-tpl-ico"><t.icon size={14} /></div>
+                      <div className="rt-tpl-text">
+                        <div className="rt-tpl-title">{t.title}</div>
+                        <div className="rt-tpl-desc">{t.desc}</div>
+                      </div>
+                      {isActive && <div className="rt-tpl-check"><I.check size={11} /></div>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rt-hr" />
+
+            {/* Name + anatomy */}
+            <div className="rt-name-block">
+              <input value={wf.name} onChange={(e) => set({ name: e.target.value })}
+                ref={nameRef}
+                placeholder="Untitled policy"
+                className="rt-name-input"
+                onClick={(e) => e.stopPropagation()} />
+              <div className="rt-anatomy">
+                A policy fires on a <b>trigger</b>, evaluates <b>conditions</b>, then routes the <b>decision</b> — with a <b>fallback</b> if none match.
+              </div>
+            </div>
+
+            {/* Prompt + send → magic-fill */}
+            <div className={`rt-prompt ${activeTemplate ? 'has-tpl' : ''}`}>
+              {activeTemplate && (
+                <div className="rt-prompt-tpl">
+                  <div className="rt-prompt-tpl-ico"><activeTemplate.icon size={11} /></div>
+                  <span className="rt-prompt-tpl-label">Filled from template</span>
+                  <span className="rt-prompt-tpl-name">{activeTemplate.title}</span>
+                  <button type="button" className="rt-prompt-tpl-reset" onClick={resetForm}>
+                    <I.close size={10} /> Reset
+                  </button>
+                </div>
+              )}
+              <div className="rt-prompt-input">
+                <I.sparkle size={13} className="rt-prompt-spark" />
+                <textarea className="rt-magic-input" value={wf.desc}
+                  onChange={(e) => set({ desc: e.target.value })}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    if ((e.key === 'Enter' && (e.metaKey || e.ctrlKey)) || (e.key === 'Enter' && !e.shiftKey)) {
+                      e.preventDefault();
+                      if (wf.desc.trim() && wf.desc.trim() !== lastFilledPrompt.trim()) magicFill();
+                    }
+                  }}
+                  rows={2}
+                  placeholder="Describe your policy — e.g. 'Require approval for events over $20k'" />
+                <button type="button" className="rt-prompt-send"
+                  disabled={!wf.desc.trim() || wf.desc.trim() === lastFilledPrompt.trim()}
+                  onClick={magicFill}
+                  aria-label="Generate policy">
+                  <I.arrowUp size={13} />
+                </button>
+              </div>
+              <div className="rt-prompt-hint">Press Enter to populate the fields below — or fill them yourself.</div>
+            </div>
+
+            {/* Recipe cards — always on the surface */}
+            <div className="rt-recipe-list">
+              <div className="rc static filled">
+                <div className="rc-head">
+                  <div className="rc-ico"><I.bolt size={14} /></div>
+                  <div className="rc-h-text">
+                    <div className="rc-label">When it fires</div>
+                  </div>
+                  <div className="rc-h-aside">
+                    {triggerExamples.slice(0, 2).map((ex, i) => (
+                      <button key={i} type="button" className="rc-ex-chip" onClick={() => set(ex.val)}>{ex.label}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="rc-body">
+                  <TriggerPicker value={wf.trigger} onChange={(id) => set({ trigger: id })}
+                    open={openMenu === 'trig'}
+                    toggle={(e) => { e.stopPropagation(); setOpenMenu(m => m === 'trig' ? null : 'trig'); }} />
+                </div>
+              </div>
+
+              <div className="rc static filled">
+                <div className="rc-head">
+                  <div className="rc-ico"><I.shieldCheck size={14} /></div>
+                  <div className="rc-h-text">
+                    <div className="rc-label">What it checks</div>
+                  </div>
+                  <div className="rc-h-aside">
+                    {matchExamples.slice(0, 2).map((ex, i) => (
+                      <button key={i} type="button" className="rc-ex-chip" onClick={() => set(ex.val)}>{ex.label}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="rc-body">
+                  <div className="conds" style={{ background: '#fff', boxShadow: 'inset 0 0 0 1px var(--border)', borderRadius: 10, padding: 10 }}>
+                  {wf.conds.length === 0 && (
+                    <div style={{ font: '400 12px/1.4 var(--font-sans)', color: 'var(--muted-foreground)', padding: '4px 4px 8px' }}>
+                      No conditions yet — this policy will fire on every event matching the trigger. Add a condition to narrow it down.
+                    </div>
+                  )}
+                  {wf.conds.map((c, i) => (
+                    <div key={c.id} className="cond-row">
+                      <Dropdown className={`sel ${i === 0 ? 'op' : 'conj'}`}
+                        value={c.conj} options={i === 0 ? ['If'] : CONJ_OPTS}
+                        onChange={(v) => setWf(w => ({ ...w, conds: w.conds.map((x,j) => j===i ? {...x, conj: v} : x) }))}
+                        openKey={`conj-${i}`} openMenu={openMenu} setOpenMenu={setOpenMenu} />
+                      <Dropdown className="sel"
+                        value={c.field} options={FIELD_OPTS}
+                        onChange={(v) => setWf(w => ({ ...w, conds: w.conds.map((x,j) => j===i ? {...x, field: v} : x) }))}
+                        openKey={`field-${i}`} openMenu={openMenu} setOpenMenu={setOpenMenu} />
+                      <Dropdown className="sel op"
+                        value={c.op} options={c.field === 'Event type' || c.field === 'Location' || c.field === 'Vendor' ? ['is', 'is not'] : OP_OPTS}
+                        onChange={(v) => setWf(w => ({ ...w, conds: w.conds.map((x,j) => j===i ? {...x, op: v} : x) }))}
+                        openKey={`op-${i}`} openMenu={openMenu} setOpenMenu={setOpenMenu} />
+                      {c.field === 'Event type' ? (
+                        <Dropdown className="sel num-input"
+                          value={c.value} options={TYPE_OPTS}
+                          onChange={(v) => setWf(w => ({ ...w, conds: w.conds.map((x,j) => j===i ? {...x, value: v} : x) }))}
+                          openKey={`val-${i}`} openMenu={openMenu} setOpenMenu={setOpenMenu} hideChev />
+                      ) : (
+                        <input className="sel num-input"
+                          style={{ border: 'none', outline: 'none', background: 'transparent', flex: '1 1 auto', minWidth: 0, font: '400 12.5px/1 var(--font-sans)' }}
+                          value={c.value}
+                          onChange={(e) => setWf(w => ({ ...w, conds: w.conds.map((x,j) => j===i ? {...x, value: e.target.value} : x) }))}
+                          onClick={(e) => e.stopPropagation()} />
+                      )}
+                      {wf.conds.length > 0 && (
+                        <button className="cond-x" onClick={(e) => { e.stopPropagation(); setWf(w => ({ ...w, conds: w.conds.filter((_,j) => j !== i) })); }}
+                          title="Remove">
+                          <I.close size={10} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button className="add-cond" onClick={(e) => { e.stopPropagation();
+                    setWf(w => ({ ...w, conds: [...w.conds, { id: Date.now(), conj: w.conds.length === 0 ? 'If' : 'And', field: 'Headcount', op: '≥', value: '50' }] }));
+                  }}><I.plus size={11} /> Add condition</button>
+                </div>
+                </div>
+              </div>
+
+              <div className="rc static filled">
+                <div className="rc-head">
+                  <div className="rc-ico"><I.shield size={14} /></div>
+                  <div className="rc-h-text">
+                    <div className="rc-label">Who decides</div>
+                  </div>
+                  <div className="rc-h-aside">
+                    {decideExamples.slice(0, 2).map((ex, i) => (
+                      <button key={i} type="button" className="rc-ex-chip" onClick={() => set(ex.val)}>{ex.label}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="rc-body">
+                  <div className="cond-row" style={{ background: '#fff', boxShadow: 'inset 0 0 0 1px var(--border)', borderRadius: 10, padding: 8 }}>
+                    <Dropdown className="sel" style={{ flex: '1 1 auto' }}
+                      value={wf.requireMode} options={['Require any', 'Require all', 'Require majority']}
+                      onChange={(v) => set({ requireMode: v })}
+                      openKey="req" openMenu={openMenu} setOpenMenu={setOpenMenu} />
+                    <span style={{ font: '400 12.5px/1 var(--font-sans)', color: 'var(--muted-foreground)' }}>of</span>
+                    <AdminPicker admins={wf.admins} setAdmins={(a) => set({ admins: a })}
+                      open={openMenu === 'adm'}
+                      toggle={(e) => { e.stopPropagation(); setOpenMenu(m => m === 'adm' ? null : 'adm'); }} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rc static filled">
+                <div className="rc-head">
+                  <div className="rc-ico"><I.alert size={14} /></div>
+                  <div className="rc-h-text">
+                    <div className="rc-label">Otherwise</div>
+                  </div>
+                  <div className="rc-h-aside">
+                    {fallbackExamples.slice(0, 2).map((ex, i) => (
+                      <button key={i} type="button" className="rc-ex-chip" onClick={() => set(ex.val)}>{ex.label}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="rc-body">
+                  <FallbackPicker value={wf.fallback} onChange={(v) => set({ fallback: v })}
+                    open={openMenu === 'fb'}
+                    toggle={(e) => { e.stopPropagation(); setOpenMenu(m => m === 'fb' ? null : 'fb'); }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Outcome */}
+            <div className={`wf-outcome ${canSave ? 'pos' : ''}`} style={{ marginTop: 8 }}>
+              <div className="ico">{canSave ? <I.check size={14} /> : <I.clock size={14} />}</div>
+              <div className="bd">
+                <div className="t">{canSave ? 'Policy is ready to enforce' : 'Add a name and trigger to continue'}</div>
+                {canSave && <div className="d" style={{ font: '400 12px/1.3 var(--font-sans)', color: 'var(--muted-foreground)', marginTop: 2 }}>
+                  Once active, every {trigOpt?.t.toLowerCase()} will be evaluated against this policy.
+                </div>}
+              </div>
+              <I.info size={12} className="chev" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>);
+
+}
+
+// Generic dropdown used inside condition rows
+function Dropdown({ className, style, value, options, onChange, openKey, openMenu, setOpenMenu, hideChev }) {
+  const open = openMenu === openKey;
+  return (
+    <div className={className} style={{ ...style, position: 'relative', cursor: 'pointer' }}
+    onClick={(e) => {e.stopPropagation();setOpenMenu(open ? null : openKey);}}>
+      <span>{value}</span>
+      {!hideChev && <I.chevronDown size={10} />}
+      {open &&
+      <div className="dd-menu">
+          {options.map((o) =>
+        <div key={o} className={`dd-item ${o === value ? 'sel' : ''}`}
+        onClick={(e) => {e.stopPropagation();onChange(o);setOpenMenu(null);}}>
+              {o}
+            </div>
+        )}
+        </div>
+      }
+    </div>);
+
+}
+
+function TriggerPicker({ value, onChange, open, toggle }) {
+  const current = TRIGGER_OPTS.find((t) => t.id === value) || TRIGGER_OPTS[0];
+  const Ico = current.icon;
+  return (
+    <div style={{ position: 'relative' }}>
+      <div className="wf-trigger" style={{ cursor: 'pointer' }} onClick={toggle}>
+        <div className="ico"><Ico size={14} /></div>
+        <div className="bd">
+          <div className="t">{current.t}</div>
+          <div className="d">{current.d}</div>
+        </div>
+        <I.chevronDown size={12} style={{ color: 'var(--muted-foreground)' }} />
+      </div>
+      {open &&
+      <div className="dd-menu" style={{ left: 0, right: 0, top: 'calc(100% + 4px)', minWidth: 0, padding: 4 }}>
+          {TRIGGER_OPTS.map((t) => {
+          const Tco = t.icon;
+          return (
+            <div key={t.id} className={`dd-item ${t.id === value ? 'sel' : ''}`}
+            style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px' }}
+            onClick={(e) => {e.stopPropagation();onChange(t.id);toggle(e);}}>
+                <Tco size={14} />
+                <div>
+                  <div style={{ font: '500 12.5px/1.1 var(--font-sans)' }}>{t.t}</div>
+                  <div style={{ font: '400 11px/1.3 var(--font-sans)', color: 'var(--muted-foreground)' }}>{t.d}</div>
+                </div>
+              </div>);
+
+        })}
+        </div>
+      }
+    </div>);
+
+}
+
+function AdminPicker({ admins, setAdmins, open, toggle }) {
+  const sel = ADMINS.filter((a) => admins.includes(a.id));
+  const toggleAdmin = (id) => {
+    setAdmins(admins.includes(id) ? admins.filter((x) => x !== id) : [...admins, id]);
+  };
+  return (
+    <div className="sel" style={{ flex: '1 1 auto', display: 'flex', gap: 6, justifyContent: 'flex-start', position: 'relative', cursor: 'pointer' }} onClick={toggle}>
+      <div className="avatar-pile">
+        {sel.slice(0, 4).map((a) =>
+        <div key={a.id} className="av" style={{ background: a.color }}>{a.initial}</div>
+        )}
+        {sel.length > 4 && <div className="av more">+{sel.length - 4}</div>}
+      </div>
+      <span>{sel.length} admin{sel.length === 1 ? '' : 's'}</span>
+      <I.chevronDown size={10} style={{ marginLeft: 'auto', color: 'var(--muted-foreground)' }} />
+      {open &&
+      <div className="dd-menu" style={{ left: 0, right: 0, top: 'calc(100% + 4px)', minWidth: 0, padding: 4 }}>
+          {ADMINS.map((a) =>
+        <div key={a.id} className="dd-item"
+        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+        onClick={(e) => {e.stopPropagation();toggleAdmin(a.id);}}>
+              <div className="av" style={{ width: 18, height: 18, background: a.color, color: '#fff', font: '500 10px/1 var(--font-sans)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{a.initial}</div>
+              <span style={{ flex: 1 }}>{a.name}</span>
+              <span className="check-box" style={{ width: 14, height: 14, borderRadius: 3, border: '1px solid var(--border)', background: admins.includes(a.id) ? 'var(--action-primary)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {admins.includes(a.id) && <I.check size={9} style={{ color: '#fff' }} />}
+              </span>
+            </div>
+        )}
+        </div>
+      }
+    </div>);
+
+}
+
+const FALLBACK_OPTS = [
+{ id: 'Auto-approve', icon: I.shieldCheck, d: 'Agent proceeds autonomously without blocking' },
+{ id: 'Notify owner', icon: I.bell, d: 'Let the event owner know — proceed regardless' },
+{ id: 'Block', icon: I.shield, d: 'Halt sourcing until manually resolved' },
+{ id: 'Do nothing', icon: I.sparkle, d: 'Policy is informational only' }];
+
+
+function FallbackPicker({ value, onChange, open, toggle }) {
+  const cur = FALLBACK_OPTS.find((o) => o.id === value) || FALLBACK_OPTS[0];
+  const Ico = cur.icon;
+  const triggerRef = window.React.useRef(null);
+  const [flipUp, setFlipUp] = useStateP(false);
+  window.React.useEffect(() => {
+    if (open && triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - r.bottom;
+      // Need ~260px for the menu; flip up if not enough room
+      setFlipUp(spaceBelow < 260);
+    }
+  }, [open]);
+  return (
+    <div style={{ position: 'relative' }} ref={triggerRef}>
+      <div className="wf-outcome" style={{ cursor: 'pointer' }} onClick={toggle}>
+        <div className="ico" style={{ background: 'var(--action-subtle)', color: 'var(--action-primary)' }}><Ico size={14} /></div>
+        <div className="bd">
+          <div className="t">{cur.id}</div>
+          <div className="d">{cur.d}</div>
+        </div>
+        <I.chevronDown size={12} className="chev" />
+      </div>
+      {open &&
+      <div className="dd-menu" style={{ left: 0, right: 0, ...(flipUp ? { bottom: 'calc(100% + 4px)', top: 'auto', transformOrigin: 'bottom left' } : { top: 'calc(100% + 4px)' }), minWidth: 0, padding: 4 }}>
+          {FALLBACK_OPTS.map((o) => {
+          const Oi = o.icon;
+          return (
+            <div key={o.id} className={`dd-item ${o.id === value ? 'sel' : ''}`}
+            style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px' }}
+            onClick={(e) => {e.stopPropagation();onChange(o.id);toggle(e);}}>
+                <Oi size={14} />
+                <div>
+                  <div style={{ font: '500 12.5px/1.1 var(--font-sans)' }}>{o.id}</div>
+                  <div style={{ font: '400 11px/1.3 var(--font-sans)', color: 'var(--muted-foreground)' }}>{o.d}</div>
+                </div>
+              </div>);
+
+        })}
+        </div>
+      }
+    </div>);
+
+}
+
+window.PoliciesChat = PoliciesChat;
 
 </script></script>
   <script type="text/babel">
@@ -14538,14 +15237,29 @@ function App() {
       </div>;
 
   } else if (adminSection === 'policies') {
-    body = <PoliciesLanding
-      policies={policies}
-      pendingPolicies={pendingPolicies}
-      togglePolicy={togglePolicy}
-      openDetail={(id) => {const p = policies.find((x) => x.id === id);setDetailPolicy({ mode: 'active', policy: p });setDetailOpen(true);}}
-      openSuggested={(p) => {setDetailPolicy({ mode: 'suggested', policy: p });setDetailOpen(true);}}
-      openPending={(p) => {setDetailPolicy({ mode: 'pending', policy: p });setDetailOpen(true);}}
-      goInsights={() => {setAdminSection('insights');setView('landing');}} />;
+    if (view === 'chat') {
+      body = <PoliciesChat onClose={() => { setView('landing'); window.__editingPolicy = null; }}
+        initialPolicy={window.__editingPolicy}
+        onSave={(p) => {
+          setPolicies((ps) => {
+            const idx = ps.findIndex(x => x.id === p.id);
+            if (idx >= 0) { const next = [...ps]; next[idx] = p; return next; }
+            return [p, ...ps];
+          });
+          window.__editingPolicy = null;
+          setView('landing');
+        }} />;
+    } else {
+      body = <PoliciesLanding
+        policies={policies}
+        pendingPolicies={pendingPolicies}
+        togglePolicy={togglePolicy}
+        openDetail={(id) => {const p = policies.find((x) => x.id === id);setDetailPolicy({ mode: 'active', policy: p });setDetailOpen(true);}}
+        openSuggested={(p) => {setDetailPolicy({ mode: 'suggested', policy: p });setDetailOpen(true);}}
+        openPending={(p) => {setDetailPolicy({ mode: 'pending', policy: p });setDetailOpen(true);}}
+        openChat={() => setView('chat')}
+        goInsights={() => {setAdminSection('insights');setView('landing');}} />;
+    }
   } else if (adminSection === 'insights') {
     body = <Insights onAskAI={askAI} onOpenSuggested={(s) => setSuggestedAction(s)} />;
   } else if (adminSection === 'users') {
@@ -14731,7 +15445,11 @@ function App() {
           minimizeMode={false}
           showSidebarToggle={!collapsed && !showSideChat}
           title={adminPageHead && adminPageHead.title}
-          right={!isHome && adminSection === 'insights' ?
+          right={!isHome && adminSection === 'policies' && view !== 'chat' ?
+          <button className="btn" style={{ height: 28, fontSize: 12 }} onClick={() => setView('chat')}>
+              <I.plus size={12} /> New policy
+            </button> :
+          !isHome && adminSection === 'insights' ?
           <>
               <button className="btn outline" style={{ height: 28, fontSize: 12 }}>
                 <I.filter size={12} /> Filters
