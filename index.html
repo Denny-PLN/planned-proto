@@ -14724,7 +14724,7 @@ function App() {
         }
 
         {!mainHidden && <div className="main">
-        {!inChatMode && <Topbar
+        {!inChatMode && !(!isHome && (adminSection === 'insights' || adminSection === 'policies')) && <Topbar
           section={section}
           homeCrumb={homeCrumb}
           onToggleSidebar={() => setCollapsed((c) => !c)}
