@@ -321,7 +321,7 @@ button { font-family: inherit; }
 .sc-head { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 50px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .sc-head .icon-btn { background: none; border: none; cursor: pointer; color: var(--muted-foreground); padding: 6px; border-radius: 6px; display: inline-flex; }
 .sc-head .icon-btn:hover { background: var(--muted); color: var(--foreground); }
-.sc-title { font: 500 13.5px/1.2 var(--font-sans); color: var(--foreground); letter-spacing: -0.005em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-title { font: 500 13.5px/1.5 var(--font-sans); color: var(--foreground); letter-spacing: -0.005em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 0; }
 .sc-feed { flex: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 18px; }
 .sc-feed .msg { display: flex; gap: 10px; }
 .sc-feed .msg.user { justify-content: flex-end; }
@@ -14886,8 +14886,10 @@ function SideChatPane({ chat, onClose, onToggleSidebar }) {
     <div className="side-chat">
       <div className="sc-head">
         <div className="sc-title">Agent chat</div>
-        <button className="icon-btn" title="Export chat"
-          aria-label="Export chat"><I.upload size={15} /></button>
+        <button className="btn outline" title="Export chat" aria-label="Export chat"
+          style={{ height: 28, fontSize: 12, padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <I.upload size={12} /> Export
+        </button>
         <button className="icon-btn" onClick={onClose} title="Minimize chat"><I.arrowLeftDouble size={16} /></button>
       </div>
       <div className="sc-feed">
