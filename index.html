@@ -13034,18 +13034,11 @@ const TASK_ROWS = [
   { name: 'Ezhil Mauchik',     events:  21, tasks:   41, completed: 0,  pending:   41, wont: 0 },
 ];
 
-function TaskReporting() {
-  const [tab, setTab] = React.useState('assignee');
+function TaskReporting({ tab, setTab }) {
+  const [localTab, setLocalTab] = React.useState('assignee');
+  const activeTab = tab !== undefined ? tab : localTab;
   return (
     <div className="dash tr-dash">
-      {/* Sub-tabs */}
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList variant="line">
-          <TabsTrigger value="assignee">Assignee summary</TabsTrigger>
-          <TabsTrigger value="event">Event summary</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       {/* Table */}
       <section className="d-card d-table-card tr-table-card">
         <div className="d-table-toolbar">
@@ -13217,17 +13210,11 @@ const PREF_ROWS = [
   { supplier: 'Captives',             category: 'Venue' },
 ];
 
-function Preferred() {
-  const [tab, setTab] = React.useState('suppliers');
+function Preferred({ tab, setTab }) {
+  const [localTab, setLocalTab] = React.useState('suppliers');
+  const activeTab = tab !== undefined ? tab : localTab;
   return (
     <div className="dash pf-dash">
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList variant="line">
-          <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
-          <TabsTrigger value="cities">Cities</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       <section className="d-card d-table-card pf-table-card">
         <div className="d-table-toolbar">
           <div className="d-search">
@@ -13385,18 +13372,11 @@ const SETTINGS_TABS = [
   'Currency rates',
 ];
 
-function CompanySettings() {
-  const [tab, setTab] = React.useState(SETTINGS_TABS[0]);
+function CompanySettings({ tab, setTab }) {
+  const [localTab, setLocalTab] = React.useState(SETTINGS_TABS[0]);
+  const activeTab = tab !== undefined ? tab : localTab;
   return (
     <div className="dash cs-dash">
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList variant="line">
-          {SETTINGS_TABS.map((t) => (
-            <TabsTrigger key={t} value={t}>{t}</TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-
       <div className="cs-body">
         {/* Logo card */}
         <div className="cs-logo-card">
@@ -14356,6 +14336,12 @@ function App() {
   const [adminSection, setAdminSection] = useStateA(() => localStorage.getItem('admin_section') || 'policies');
   const [dashboardTab, setDashboardTab] = useStateA(() => localStorage.getItem('dashboard_tab') || 'events-report');
   React.useEffect(() => { localStorage.setItem('dashboard_tab', dashboardTab); }, [dashboardTab]);
+  const [taskReportingTab, setTaskReportingTab] = useStateA(() => localStorage.getItem('taskreporting_tab') || 'assignee');
+  React.useEffect(() => { localStorage.setItem('taskreporting_tab', taskReportingTab); }, [taskReportingTab]);
+  const [preferredTab, setPreferredTab] = useStateA(() => localStorage.getItem('preferred_tab') || 'suppliers');
+  React.useEffect(() => { localStorage.setItem('preferred_tab', preferredTab); }, [preferredTab]);
+  const [settingsTab, setSettingsTab] = useStateA(() => localStorage.getItem('settings_tab') || 'Company information');
+  React.useEffect(() => { localStorage.setItem('settings_tab', settingsTab); }, [settingsTab]);
   const [portalSection, setPortalSection] = useStateA(() => localStorage.getItem('portal_section') || 'portal-home');
   const [view, setView] = useStateA(() => localStorage.getItem('admin_view') || 'landing');
   const [detailPolicy, setDetailPolicy] = useStateA(null);
@@ -14570,15 +14556,15 @@ function App() {
   } else if (adminSection === 'contracts') {
     body = <Contracts />;
   } else if (adminSection === 'taskreporting') {
-    body = <TaskReporting />;
+    body = <TaskReporting tab={taskReportingTab} setTab={setTaskReportingTab} />;
   } else if (adminSection === 'approvals') {
     body = <Approvals />;
   } else if (adminSection === 'preferred') {
-    body = <Preferred />;
+    body = <Preferred tab={preferredTab} setTab={setPreferredTab} />;
   } else if (adminSection === 'intakeforms') {
     body = <IntakeForms />;
   } else if (adminSection === 'settings') {
-    body = <CompanySettings />;
+    body = <CompanySettings tab={settingsTab} setTab={setSettingsTab} />;
   } else if (adminSection === 'offices') {
     body = <Offices />;
   } else if (adminSection === 'spaces') {
@@ -14767,20 +14753,50 @@ function App() {
               <I.plus size={12} /> New event
             </button> :
           null} />}
-        {!inChatMode && !isHome && adminSection === 'dashboard' && (
-          <div className="sub-topbar">
-            <Tabs value={dashboardTab} onValueChange={setDashboardTab}>
-              <TabsList variant="line">
-                <TabsTrigger value="events-report">Events report</TabsTrigger>
-                <TabsTrigger value="savings">Savings</TabsTrigger>
-                <TabsTrigger value="time-savings">Time savings</TabsTrigger>
-                <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
-                <TabsTrigger value="internal-spaces">Internal spaces</TabsTrigger>
-                <TabsTrigger value="room-blocks">Room blocks</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        )}
+        {!inChatMode && !isHome && (() => {
+          const subTabs = adminSection === 'dashboard' ? {
+            value: dashboardTab, setValue: setDashboardTab, items: [
+              { v: 'events-report',   l: 'Events report' },
+              { v: 'savings',         l: 'Savings' },
+              { v: 'time-savings',    l: 'Time savings' },
+              { v: 'suppliers',       l: 'Suppliers' },
+              { v: 'internal-spaces', l: 'Internal spaces' },
+              { v: 'room-blocks',     l: 'Room blocks' },
+            ]
+          } : adminSection === 'taskreporting' ? {
+            value: taskReportingTab, setValue: setTaskReportingTab, items: [
+              { v: 'assignee', l: 'Assignee summary' },
+              { v: 'event',    l: 'Event summary' },
+            ]
+          } : adminSection === 'preferred' ? {
+            value: preferredTab, setValue: setPreferredTab, items: [
+              { v: 'suppliers', l: 'Suppliers' },
+              { v: 'cities',    l: 'Cities' },
+            ]
+          } : adminSection === 'settings' ? {
+            value: settingsTab, setValue: setSettingsTab, items: [
+              { v: 'Company information', l: 'Company information' },
+              { v: 'Offices',             l: 'Offices' },
+              { v: 'Integrations',        l: 'Integrations' },
+              { v: 'Event sites',         l: 'Event sites' },
+              { v: 'Global branding',     l: 'Global branding' },
+              { v: 'Permissions',         l: 'Permissions' },
+              { v: 'Currency rates',      l: 'Currency rates' },
+            ]
+          } : null;
+          if (!subTabs) return null;
+          return (
+            <div className="sub-topbar">
+              <Tabs value={subTabs.value} onValueChange={subTabs.setValue}>
+                <TabsList variant="line">
+                  {subTabs.items.map(it => (
+                    <TabsTrigger key={it.v} value={it.v}>{it.l}</TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </div>
+          );
+        })()}
         <div className={`content ${isHome && openEvent ? 'content-event' : ''}`} style={{ padding: "0px" }}>
           {body}
         </div>
