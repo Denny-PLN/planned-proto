@@ -14916,7 +14916,11 @@ function SideChatPane({ chat, onClose, onToggleSidebar }) {
             <div className="col">
               <div className="hdr"><span className="name">Marcy</span> <span>{now}</span></div>
               <div className="bubble" style={{ font: '400 13.5px/1.55 var(--font-sans)' }}>
-                <div style={{ fontWeight: 500, marginBottom: 6 }}>Hi Denny, I'm Marcy. 👋</div>
+                <div style={{ fontWeight: 500, marginBottom: 6 }}>{(() => {
+                  const h = new Date().getHours();
+                  const part = h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening';
+                  return `Good ${part}, Denny`;
+                })()}</div>
                 <div>I can dig into your program data, surface savings opportunities, draft policies, or pull together reports — whatever you need. Pick a starting point below or just type your question.</div>
               </div>
             </div>
