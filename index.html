@@ -9906,12 +9906,6 @@ function PoliciesLanding({ policies, pendingPolicies, togglePolicy, openDetail, 
   return (
     <div className="pol-page">
       <div className="ins-chart-group" style={{ width: '100%' }}>
-        <div className="ins-chart-toolbar">
-          <div className="ins-chart-toolbar-title">
-            <div className="sc-card-title">Policies insights</div>
-            <div className="sc-card-desc">{`Showing ${meta.label.toLowerCase()} over time`}</div>
-          </div>
-        </div>
         {ShadcnChart &&
           <ShadcnChart
             metrics={POL_METRICS} activeId={active} onActive={setActive}
@@ -10643,12 +10637,6 @@ function Insights({ onAskAI, onOpenSuggested }) {
     <div className="ins-page">
       {/* Shadcn line chart — vitals-as-tabs + chart body + embedded Summary */}
       <div className="ins-chart-group">
-        <div className="ins-chart-toolbar">
-          <div className="ins-chart-toolbar-title">
-            <div className="sc-card-title">Program insights</div>
-            <div className="sc-card-desc">{`Showing ${meta.label.toLowerCase()} over time`}</div>
-          </div>
-        </div>
         {ShadcnChart &&
         <ShadcnChart
           metrics={insMetrics}
