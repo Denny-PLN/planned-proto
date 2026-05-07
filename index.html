@@ -14954,7 +14954,7 @@ function SideChatPane({ chat, onClose, onToggleSidebar }) {
       {isNewChat ? (
         <div className="sc-actions sc-actions-row">
           {newChatSuggestions.map((s, i) => (
-            <Button key={i} variant="outline" size="sm"><s.icon size={13} /> {s.label}</Button>
+            <button key={i} className="toggle outline"><s.icon size={14} /> {s.label}</button>
           ))}
         </div>
       ) : (
