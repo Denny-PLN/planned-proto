@@ -337,6 +337,25 @@ button { font-family: inherit; }
 .sc-action svg { color: var(--muted-foreground); }
 .sc-action:hover { background: var(--muted); }
 .sc-action.primary { background: var(--muted); font-weight: 500; }
+
+/* Suggested-action chips for new chat — wraps to new line, scrollable horizontally */
+.sc-actions-row { flex-direction: row; flex-wrap: wrap; gap: 6px; padding: 8px 16px 0; }
+.sc-suggest {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: 400 12.5px/1 var(--font-sans);
+  color: var(--foreground);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.sc-suggest svg { color: var(--muted-foreground); }
+.sc-suggest:hover { background: var(--muted); border-color: color-mix(in oklab, var(--foreground) 15%, transparent); }
 .sc-action.primary svg { color: var(--foreground); }
 .sc-input { padding: 10px 16px 14px; flex-shrink: 0; }
 .sc-input .box { display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 6px 6px 6px 12px; }
@@ -14812,6 +14831,14 @@ function App() {
 function SideChatPane({ chat, onClose, onToggleSidebar }) {
   const title = chat?.title || 'Ask AI';
   const trim = title.length > 40 ? title.slice(0, 37) + '...' : title;
+  const isNewChat = !title || title.toLowerCase() === 'new chat' || title.toLowerCase() === 'ask ai';
+  const newChatSuggestions = [
+    { label: 'Show me program insights',  icon: I.chart },
+    { label: 'Find spend opportunities',  icon: I.bulb  },
+    { label: 'Review pending approvals',  icon: I.check },
+    { label: 'Generate a Q1 spend report', icon: I.file  },
+    { label: 'Run a compliance check',    icon: I.shield },
+  ];
   const buildResponse = (t) => {
     const lower = t.toLowerCase();
     if (lower.includes('room block') || lower.includes('over-estimation')) {
@@ -14894,33 +14921,56 @@ function SideChatPane({ chat, onClose, onToggleSidebar }) {
         <button className="icon-btn" onClick={onClose} title="Minimize chat"><I.arrowLeftDouble size={16} /></button>
       </div>
       <div className="sc-feed">
-        <div className="msg user">
-          <div className="col" style={{ alignItems: 'flex-end' }}>
-            <div className="hdr"><span>{now}</span> <span className="name">Denny Lavacca</span>
-              <span className="av" style={{ background: 'var(--decorative-champagne-600)', color: '#fff', font: '500 10px/1 var(--font-sans)' }}>DL</span>
-            </div>
-            <div className="bubble">Tell me more about: {title.charAt(0).toLowerCase() + title.slice(1)}</div>
-          </div>
-        </div>
-        <div className="msg">
-          <div className="av" style={{ background: 'var(--decorative-lavender-300)' }}><span style={{ color: '#fff', font: '500 10px/1 var(--font-sans)' }}>M</span></div>
-          <div className="col">
-            <div className="hdr"><span className="name">Marcy</span> <span>{now}</span></div>
-            <div className="bubble" style={{ font: '400 13.5px/1.55 var(--font-sans)' }}>
-              <div style={{ fontWeight: 500, marginBottom: 8 }}>{title.replace(/\.$/, '')} — breakdown:</div>
-              <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {resp.bullets.map((b, i) => <li key={i}>{b}</li>)}
-              </ul>
-              <div style={{ marginTop: 10 }}>{resp.outro}</div>
+        {isNewChat ? (
+          <div className="msg">
+            <div className="av" style={{ background: 'var(--decorative-lavender-300)' }}><span style={{ color: '#fff', font: '500 10px/1 var(--font-sans)' }}>M</span></div>
+            <div className="col">
+              <div className="hdr"><span className="name">Marcy</span> <span>{now}</span></div>
+              <div className="bubble" style={{ font: '400 13.5px/1.55 var(--font-sans)' }}>
+                <div style={{ fontWeight: 500, marginBottom: 6 }}>Hi Denny, I'm Marcy. 👋</div>
+                <div>I can dig into your program data, surface savings opportunities, draft policies, or pull together reports — whatever you need. Pick a starting point below or just type your question.</div>
+              </div>
             </div>
           </div>
+        ) : (
+          <>
+            <div className="msg user">
+              <div className="col" style={{ alignItems: 'flex-end' }}>
+                <div className="hdr"><span>{now}</span> <span className="name">Denny Lavacca</span>
+                  <span className="av" style={{ background: 'var(--decorative-champagne-600)', color: '#fff', font: '500 10px/1 var(--font-sans)' }}>DL</span>
+                </div>
+                <div className="bubble">Tell me more about: {title.charAt(0).toLowerCase() + title.slice(1)}</div>
+              </div>
+            </div>
+            <div className="msg">
+              <div className="av" style={{ background: 'var(--decorative-lavender-300)' }}><span style={{ color: '#fff', font: '500 10px/1 var(--font-sans)' }}>M</span></div>
+              <div className="col">
+                <div className="hdr"><span className="name">Marcy</span> <span>{now}</span></div>
+                <div className="bubble" style={{ font: '400 13.5px/1.55 var(--font-sans)' }}>
+                  <div style={{ fontWeight: 500, marginBottom: 8 }}>{title.replace(/\.$/, '')} — breakdown:</div>
+                  <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {resp.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                  </ul>
+                  <div style={{ marginTop: 10 }}>{resp.outro}</div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+      {isNewChat ? (
+        <div className="sc-actions sc-actions-row">
+          {newChatSuggestions.map((s, i) => (
+            <button key={i} className="sc-suggest"><s.icon size={13} /> {s.label}</button>
+          ))}
         </div>
-      </div>
-      <div className="sc-actions">
-        <button className="sc-action primary"><I.check size={13} /> Review policy & approve</button>
-        <button className="sc-action"><I.close size={13} /> Save and exit</button>
-        <button className="sc-action"><I.edit size={13} /> Something else</button>
-      </div>
+      ) : (
+        <div className="sc-actions">
+          <button className="sc-action primary"><I.check size={13} /> Review policy & approve</button>
+          <button className="sc-action"><I.close size={13} /> Save and exit</button>
+          <button className="sc-action"><I.edit size={13} /> Something else</button>
+        </div>
+      )}
       <div className="sc-input">
         <div className="box">
           <input placeholder="Reply to Marcy..." />
