@@ -10213,7 +10213,7 @@ function PendingConfirmModal({ onMarkPending, onNotYet, mailtoHref }) {
 
 // ─── Policy detail flyout ─────────────────────────────────────────────────────
 // mode: 'suggested' | 'pending' | 'active'
-function PolicyDetailFlyout({ onClose, onRequestSetup, onCancelPending, mode, policy }) {
+function PolicyDetailFlyout({ onClose, onRequestSetup, onCancelPending, onEdit, mode, policy }) {
   const isSuggested = mode === 'suggested';
   const isPending   = mode === 'pending';
   const isActive    = mode === 'active';
@@ -10393,7 +10393,9 @@ function PolicyDetailFlyout({ onClose, onRequestSetup, onCancelPending, mode, po
         {/* Footer */}
         <div className="flyout-foot">
           {isSuggested && <>
-            <button className="btn outline" style={{ width: '100%' }} onClick={onClose}>Dismiss</button>
+            <button className="btn outline" style={{ width: '100%' }} onClick={() => onEdit && onEdit(policy)}>
+              <I.edit size={13} /> Edit in wizard
+            </button>
             <button className="btn" style={{ width: '100%' }} onClick={handleRequestSetup}>
               <I.email size={13} /> Request setup
             </button>
@@ -10408,9 +10410,11 @@ function PolicyDetailFlyout({ onClose, onRequestSetup, onCancelPending, mode, po
             </button>
           </>}
           {isActive && <>
-            <button className="btn outline" style={{ width: '100%' }} onClick={onClose}>Close</button>
             <button className="btn outline" style={{ width: '100%' }} onClick={handleContactDylan}>
               <I.email size={13} /> Contact Dylan
+            </button>
+            <button className="btn" style={{ width: '100%' }} onClick={() => onEdit && onEdit(policy)}>
+              <I.edit size={13} /> Edit policy
             </button>
           </>}
         </div>
@@ -15545,6 +15549,11 @@ function App() {
         }}
         onCancelPending={(id) => {
           setPendingPolicies(prev => prev.filter(p => p.id !== id));
+        }}
+        onEdit={(p) => {
+          window.__editingPolicy = p;
+          setDetailOpen(false);
+          setView('chat');
         }} />
       }
 
