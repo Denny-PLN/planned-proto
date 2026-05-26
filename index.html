@@ -10449,12 +10449,44 @@ const TRIGGER_OPTS = [
 { id: 'booked', icon: I.shieldCheck, t: 'Booking confirmed', d: 'Venue or vendor contract signed' },
 { id: 'invoice', icon: I.email, t: 'Invoice submitted', d: 'Any invoice lands in the queue' }];
 
-const FIELD_OPTS = ['Budget', 'Headcount', 'Event type', 'Location', 'Vendor'];
+const FIELD_OPTS = ['Budget', 'Attendee count', 'Event type', 'Location', 'Vendor', 'Cost center', 'User'];
 const OP_OPTS = ['≥', '>', '=', '≤', '<'];
-const TYPE_OPTS = ['Offsite', 'Onsite', 'Client dinner', 'Conference', 'Internal'];
+const TYPE_OPTS = ['Offsite', 'Onsite', 'Client dinner', 'Conference', 'Internal', 'Roadshow', 'Retreat'];
+const LOCATION_OPTS = ['San Francisco', 'New York', 'Chicago', 'Austin', 'London', 'Toronto', 'Paris', 'Montréal', 'Multi-city'];
+const VENDOR_OPTS = ['Hyatt', 'Marriott', 'Hilton', 'IHG', 'Four Seasons', 'Sheraton', 'WeWork', 'Cvent', 'Custom'];
+const COST_CENTER_OPTS = ['Marketing', 'Sales', 'Engineering', 'People Ops', 'Finance', 'Executive', 'Customer Success'];
+const USER_OPTS = ['Emma Chen', 'Dennis L.', 'Ravi Patel', 'Sofia Gómez', 'Marcus Lee', 'Any planner'];
 const CONJ_OPTS = ['And', 'Or'];
 
+const NUMERIC_FIELDS = ['Budget', 'Attendee count'];
+const FIELD_OPT_MAP = {
+  'Event type':   TYPE_OPTS,
+  'Location':     LOCATION_OPTS,
+  'Vendor':       VENDOR_OPTS,
+  'Cost center':  COST_CENTER_OPTS,
+  'User':         USER_OPTS,
+};
+
 const TEMPLATES = [
+{
+  id: 'high-impact',
+  icon: I.shield,
+  name: 'High-impact events (demo)',
+  summary: 'Budget > $50k OR attendees > 100 — require approval, else auto-approve',
+  accent: 'amber',
+  wf: {
+    name: 'High-impact event approval',
+    desc: 'When an event is created with budget over $50,000 or more than 100 attendees, require admin approval. Smaller events auto-approve.',
+    trigger: 'created',
+    conds: [
+      { id: 1, conj: 'If',  field: 'Budget',         op: '>', value: '$50,000' },
+      { id: 2, conj: 'Or',  field: 'Attendee count', op: '>', value: '100'     },
+    ],
+    admins: [],
+    requireMode: 'Require any',
+    fallback: 'Auto-approve'
+  }
+},
 {
   id: 'large-events',
   icon: I.shieldCheck,
@@ -10682,8 +10714,13 @@ function PoliciesChat({ onClose, onSave, initialPolicy }) {
   const whenText = trigOpt ? trigOpt.t : '';
   const matchText = wf.conds.length === 0 ? '' :
     wf.conds.map((c, i) => `${i === 0 ? '' : c.conj + ' '}${c.field} ${c.op} ${c.value}`).join(' ');
-  const decideText = wf.admins.length === 0 ? '' :
-    `${wf.requireMode.replace('Require ', '')} of ${wf.admins.length} admin${wf.admins.length === 1 ? '' : 's'}`;
+  const decideText = (() => {
+    if (wf.admins.length === 0) {
+      if (wf.requireMode === 'Require any') return `any of all ${ADMINS.length} admins`;
+      return '';
+    }
+    return `${wf.requireMode.replace('Require ', '')} of ${wf.admins.length} admin${wf.admins.length === 1 ? '' : 's'}`;
+  })();
   const fallbackText = wf.fallback;
 
   // ── Examples ─────────────────────────────────────────────
@@ -10895,12 +10932,12 @@ function PoliciesChat({ onClose, onSave, initialPolicy }) {
                         onChange={(v) => setWf(w => ({ ...w, conds: w.conds.map((x,j) => j===i ? {...x, field: v} : x) }))}
                         openKey={`field-${i}`} openMenu={openMenu} setOpenMenu={setOpenMenu} />
                       <Dropdown className="sel op"
-                        value={c.op} options={c.field === 'Event type' || c.field === 'Location' || c.field === 'Vendor' ? ['is', 'is not'] : OP_OPTS}
+                        value={c.op} options={NUMERIC_FIELDS.includes(c.field) ? OP_OPTS : ['is', 'is not']}
                         onChange={(v) => setWf(w => ({ ...w, conds: w.conds.map((x,j) => j===i ? {...x, op: v} : x) }))}
                         openKey={`op-${i}`} openMenu={openMenu} setOpenMenu={setOpenMenu} />
-                      {c.field === 'Event type' ? (
+                      {FIELD_OPT_MAP[c.field] ? (
                         <Dropdown className="sel num-input"
-                          value={c.value} options={TYPE_OPTS}
+                          value={c.value} options={FIELD_OPT_MAP[c.field]}
                           onChange={(v) => setWf(w => ({ ...w, conds: w.conds.map((x,j) => j===i ? {...x, value: v} : x) }))}
                           openKey={`val-${i}`} openMenu={openMenu} setOpenMenu={setOpenMenu} hideChev />
                       ) : (
@@ -10945,6 +10982,7 @@ function PoliciesChat({ onClose, onSave, initialPolicy }) {
                       openKey="req" openMenu={openMenu} setOpenMenu={setOpenMenu} />
                     <span style={{ font: '400 12.5px/1 var(--font-sans)', color: 'var(--muted-foreground)' }}>of</span>
                     <AdminPicker admins={wf.admins} setAdmins={(a) => set({ admins: a })}
+                      requireMode={wf.requireMode}
                       open={openMenu === 'adm'}
                       toggle={(e) => { e.stopPropagation(); setOpenMenu(m => m === 'adm' ? null : 'adm'); }} />
                   </div>
@@ -11046,20 +11084,25 @@ function TriggerPicker({ value, onChange, open, toggle }) {
 
 }
 
-function AdminPicker({ admins, setAdmins, open, toggle }) {
+function AdminPicker({ admins, setAdmins, open, toggle, requireMode }) {
   const sel = ADMINS.filter((a) => admins.includes(a.id));
   const toggleAdmin = (id) => {
     setAdmins(admins.includes(id) ? admins.filter((x) => x !== id) : [...admins, id]);
   };
+  // When "Require any" is selected with no specific admins picked, default to ALL admins
+  const showAllDefault = sel.length === 0 && requireMode === 'Require any';
+  const displayList = showAllDefault ? ADMINS : sel;
+  const displayCount = showAllDefault ? ADMINS.length : sel.length;
+  const displayLabel = showAllDefault ? `all ${ADMINS.length} admins` : `${sel.length} admin${sel.length === 1 ? '' : 's'}`;
   return (
     <div className="sel" style={{ flex: '1 1 auto', display: 'flex', gap: 6, justifyContent: 'flex-start', position: 'relative', cursor: 'pointer' }} onClick={toggle}>
       <div className="avatar-pile">
-        {sel.slice(0, 4).map((a) =>
-        <div key={a.id} className="av" style={{ background: a.color }}>{a.initial}</div>
+        {displayList.slice(0, 4).map((a) =>
+        <div key={a.id} className="av" style={{ background: a.color, opacity: showAllDefault ? 0.85 : 1 }}>{a.initial}</div>
         )}
-        {sel.length > 4 && <div className="av more">+{sel.length - 4}</div>}
+        {displayCount > 4 && <div className="av more">+{displayCount - 4}</div>}
       </div>
-      <span>{sel.length} admin{sel.length === 1 ? '' : 's'}</span>
+      <span>{displayLabel}</span>
       <I.chevronDown size={10} style={{ marginLeft: 'auto', color: 'var(--muted-foreground)' }} />
       {open &&
       <div className="dd-menu" style={{ left: 0, right: 0, top: 'calc(100% + 4px)', minWidth: 0, padding: 4 }}>
@@ -13793,7 +13836,7 @@ window.TaskReporting = TaskReporting;
 
 </script></script>
   <script type="text/babel">
-// Admin > Approvals tab — reviewer avatars + Pending pills.
+// Admin > Approvals — KPI stats + active workflows + pending approvals table.
 
 const APP_ROWS = [
   { event: 'Test event',                                       reviewers: ['DD','OO','SS'], status: 'Pending', creator: 'Chen Duan',     email: 'chen@plannedco.com',      dates: 'Apr 30, 2026 - May 1, 2026', city: 'Outside Date', attendees: 100 },
@@ -13806,6 +13849,14 @@ const APP_ROWS = [
   { event: 'TEST - Janet and Kay',                             reviewers: ['DD','SS'],       status: 'Pending', creator: 'Tasha Burgoyne', email: 'tash@plannedco.com',      dates: 'Aug 18 - 19, 2025',          city: 'São Paulo',    attendees:  10 },
   { event: 'Testing PA',                                       reviewers: ['DD','SS','SS'], status: 'Pending', creator: 'Karim Daghari', email: 'events@plannedco.com',    dates: 'Apr 23, 2026',               city: 'Montréal',     attendees: 123 },
   { event: 'Testing AM assignment-MJ',                         reviewers: ['DD','SS'],       status: 'Pending', creator: 'Karim Daghari', email: 'events@plannedco.com',    dates: 'Apr 23, 2026',               city: 'Montréal',     attendees: 123 },
+];
+
+const APP_KPIS = [
+  { label: 'Auto-approved',         value: '1,847', sub: 'this quarter',    badge: '+12%',   badgeTone: 'pos' },
+  { label: 'Approval required',     value: '264',   sub: 'escalated',       badge: '−8%',    badgeTone: 'pos' },
+  { label: 'Pending approvals',     value: '7',     sub: '3 over 48h',      badge: 'Action', badgeTone: 'warn' },
+  { label: 'Avg time to approve',   value: '14h',   sub: 'down from 34h',   badge: '−59%',   badgeTone: 'pos' },
+  { label: 'Cycle time saved',      value: '425h',  sub: 'across the team', badge: 'YTD',    badgeTone: 'neutral' },
 ];
 
 // Avatar palette — pastel hues
@@ -13831,10 +13882,78 @@ function ReviewerStack({ ids }) {
   );
 }
 
-function Approvals() {
+function Approvals({ policies = [], onNewWorkflow, onOpenWorkflow }) {
+  // Filter active policies that are approval-style (have an action involving approver/quote/approval)
+  const workflows = (policies || []).filter(p => p.on && (p.action || p.guards));
+
   return (
-    <div className="dash app-dash">
-      {/* Table */}
+    <div className="dash app-dash" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+      {/* KPI stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12 }}>
+        {APP_KPIS.map(k => (
+          <div key={k.label} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', background: '#fff' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+              <span style={{ font: '400 12px/1 var(--font-sans)', color: 'var(--muted-foreground)' }}>{k.label}</span>
+              <span style={{
+                font: '500 10.5px/1 var(--font-sans)',
+                padding: '3px 6px',
+                borderRadius: 5,
+                background: k.badgeTone === 'pos' ? 'color-mix(in oklab, oklch(0.65 0.18 150) 14%, transparent)'
+                          : k.badgeTone === 'warn' ? 'var(--warning-subtle)'
+                          : 'var(--muted)',
+                color:      k.badgeTone === 'pos' ? 'oklch(0.42 0.16 150)'
+                          : k.badgeTone === 'warn' ? 'var(--warning-primary)'
+                          : 'var(--muted-foreground)',
+              }}>{k.badge}</span>
+            </div>
+            <div style={{ font: '500 22px/1.1 var(--font-sans)', color: 'var(--foreground)', marginBottom: 2 }}>{k.value}</div>
+            <div style={{ font: '400 11.5px/1 var(--font-sans)', color: 'var(--muted-foreground)' }}>{k.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Approval workflows */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+          <h3 style={{ font: '500 14px/1 var(--font-sans)', color: 'var(--foreground)', margin: 0 }}>
+            Approval workflows <span style={{ color: 'var(--muted-foreground)', marginLeft: 6, fontWeight: 400 }}>{workflows.length}</span>
+          </h3>
+          <div style={{ flex: 1 }} />
+          <button className="btn" style={{ height: 28, fontSize: 12 }} onClick={() => onNewWorkflow && onNewWorkflow()}>
+            <I.plus size={12} /> New workflow
+          </button>
+        </div>
+        {workflows.length === 0 ? (
+          <div style={{ padding: '24px 18px', textAlign: 'center', color: 'var(--muted-foreground)', font: '400 13px/1.4 var(--font-sans)', border: '1px dashed var(--border)', borderRadius: 12 }}>
+            No active approval workflows yet. Create one to start automating sign-offs.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+            {workflows.map(p => (
+              <button key={p.id} onClick={() => onOpenWorkflow && onOpenWorkflow(p.id)}
+                style={{ textAlign: 'left', cursor: 'pointer', background: '#fff', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <I.shield size={13} style={{ color: 'var(--muted-foreground)' }} />
+                  <span style={{ font: '500 13px/1.3 var(--font-sans)', color: 'var(--foreground)', flex: 1 }}>{p.name}</span>
+                  <span className="pt-badge pt-active" style={{ font: '500 10.5px/1 var(--font-sans)' }}>Active</span>
+                </div>
+                {p.cond && p.action && (
+                  <div style={{ font: '400 12px/1.4 var(--font-sans)', color: 'var(--muted-foreground)' }}>
+                    <span style={{ color: 'var(--muted-foreground)' }}>If</span> <span style={{ color: 'var(--foreground)', fontWeight: 500 }}>{p.cond}</span>
+                    <span style={{ color: 'var(--muted-foreground)' }}> → </span>
+                    <span style={{ color: 'var(--foreground)', fontWeight: 500 }}>{p.action}</span>
+                  </div>
+                )}
+                {p.compliance && (
+                  <div style={{ font: '400 11.5px/1 var(--font-sans)', color: 'var(--muted-foreground)' }}>{p.compliance}</div>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Pending approvals table */}
       <section className="d-card d-table-card app-table-card">
         <div className="d-table-toolbar">
           <div className="d-search">
@@ -13854,37 +13973,37 @@ function Approvals() {
             <I.chevronDown size={11} />
           </span>
         </div>
-                  <Table className="app-table">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Event</TableHead>
-                <TableHead>Reviewer(s)</TableHead>
-                <TableHead>Approval status</TableHead>
-                <TableHead>Event creator</TableHead>
-                <TableHead>Event dates</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>Attendees</TableHead>
+        <Table className="app-table">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Event</TableHead>
+              <TableHead>Reviewer(s)</TableHead>
+              <TableHead>Approval status</TableHead>
+              <TableHead>Event creator</TableHead>
+              <TableHead>Event dates</TableHead>
+              <TableHead>City</TableHead>
+              <TableHead>Attendees</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {APP_ROWS.map((r, i) => (
+              <TableRow key={i}>
+                <TableCell className="app-td-event">{r.event}</TableCell>
+                <TableCell><ReviewerStack ids={r.reviewers} /></TableCell>
+                <TableCell>
+                  <span className="app-pill">{r.status}</span>
+                </TableCell>
+                <TableCell>
+                  <div className="app-creator-name">{r.creator}</div>
+                  <div className="app-creator-email">{r.email}</div>
+                </TableCell>
+                <TableCell>{r.dates}</TableCell>
+                <TableCell>{r.city}</TableCell>
+                <TableCell className="d-td-mono">{r.attendees}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {APP_ROWS.map((r, i) => (
-                <TableRow key={i}>
-                  <TableCell className="app-td-event">{r.event}</TableCell>
-                  <TableCell><ReviewerStack ids={r.reviewers} /></TableCell>
-                  <TableCell>
-                    <span className="app-pill">{r.status}</span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="app-creator-name">{r.creator}</div>
-                    <div className="app-creator-email">{r.email}</div>
-                  </TableCell>
-                  <TableCell>{r.dates}</TableCell>
-                  <TableCell>{r.city}</TableCell>
-                  <TableCell className="d-td-mono">{r.attendees}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+            ))}
+          </TableBody>
+        </Table>
         <div className="app-pagination">
           <span>Showing 1 – 10 of 211</span>
           <div className="app-pag-spacer" />
@@ -15277,7 +15396,11 @@ function App() {
   } else if (adminSection === 'taskreporting') {
     body = <TaskReporting tab={taskReportingTab} setTab={setTaskReportingTab} />;
   } else if (adminSection === 'approvals') {
-    body = <Approvals />;
+    body = <Approvals
+      policies={policies}
+      onNewWorkflow={() => { window.__editingPolicy = null; setAdminSection('policies'); setView('chat'); }}
+      onOpenWorkflow={(id) => { const p = policies.find(x => x.id === id); if (p) { setAdminSection('policies'); setDetailPolicy({ mode: 'active', policy: p }); setDetailOpen(true); } }}
+    />;
   } else if (adminSection === 'preferred') {
     body = <Preferred tab={preferredTab} setTab={setPreferredTab} />;
   } else if (adminSection === 'intakeforms') {
