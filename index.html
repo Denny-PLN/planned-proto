@@ -10578,51 +10578,26 @@ const TEMPLATES = [
 
 // Policy composer — Routines-style wizard with templates, prompt, recipe cards
 function PoliciesChat({ onClose, onSave, initialPolicy }) {
-  // Seed wf from a policy being edited, or blank
-  const seedWf = () => {
-    if (initialPolicy?._raw) return { ...initialPolicy._raw };
-    if (initialPolicy) {
-      // Best-effort back-fill from summary
-      const trig = TRIGGER_OPTS.find(t => t.t === initialPolicy.trigger)?.id || 'created';
-      return {
-        name: initialPolicy.name || '',
-        desc: initialPolicy.desc || initialPolicy.name || '',
-        trigger: trig,
-        conds: [],
-        admins: [],
+  // ── Templates (Routines-style cards) ─────────────────────
+  // First template is the maxxed-out demo policy that auto-fills the wizard on open.
+  const TPLS = [
+    { icon: I.sparkle, title: 'Demo: full-coverage approval', desc: 'Maxxed-out policy covering budget, attendees, location, vendor & cost center',
+      apply: {
+        name: 'Full-coverage event approval',
+        desc: 'Require approval when any high-risk condition is met: large budgets, big attendee counts, offsite events, multi-city locations, custom vendors, or executive cost centers.',
+        trigger: 'created',
+        conds: [
+          { id: 1, conj: 'If', field: 'Budget',         op: '>',  value: '$50,000' },
+          { id: 2, conj: 'Or', field: 'Attendee count', op: '>',  value: '100' },
+          { id: 3, conj: 'Or', field: 'Event type',     op: 'is', value: 'Offsite' },
+          { id: 4, conj: 'Or', field: 'Location',       op: 'is', value: 'Multi-city' },
+          { id: 5, conj: 'Or', field: 'Vendor',         op: 'is', value: 'Custom' },
+          { id: 6, conj: 'Or', field: 'Cost center',    op: 'is', value: 'Executive' },
+        ],
+        admins: [],                       // empty → "Require any" defaults to all admins
         requireMode: 'Require any',
         fallback: 'Auto-approve',
-      };
-    }
-    return {
-      name: '',
-      desc: '',
-      trigger: 'created',
-      conds: [],
-      admins: [],
-      requireMode: 'Require any',
-      fallback: 'Auto-approve',
-    };
-  };
-  const [wf, setWf] = useStateP(seedWf);
-  const [openMenu, setOpenMenu] = useStateP(null);
-  const [open, setOpen] = useStateP({ when: false, match: false, decide: false, fallback: false });
-  const [activeTemplate, setActiveTemplate] = useStateP(null);
-  const [lastFilledPrompt, setLastFilledPrompt] = useStateP('');
-  const [saved, setSaved] = useStateP(false);
-  const nameRef = useRefP(null);
-
-  React.useEffect(() => {
-    const t = setTimeout(() => nameRef.current && nameRef.current.focus(), 50);
-    return () => clearTimeout(t);
-  }, []);
-
-  const set = (patch) => setWf(w => ({ ...w, ...patch }));
-  const toggle = (key) => setOpen(o => ({ ...o, [key]: !o[key] }));
-  const closeAll = () => setOpen({ when: false, match: false, decide: false, fallback: false });
-
-  // ── Templates (Routines-style cards) ─────────────────────
-  const TPLS = [
+      } },
     { icon: I.shieldCheck, title: 'Approval for large events', desc: 'Require admin sign-off when budget ≥ $20k',
       apply: { name: 'Approval for large events', desc: 'When an event is created with budget ≥ $20,000, require admin approval.', trigger: 'created',
         conds: [{ id: 1, conj: 'If', field: 'Budget', op: '≥', value: '$20,000' }, { id: 2, conj: 'And', field: 'Event type', op: 'is', value: 'Offsite' }],
@@ -10648,6 +10623,42 @@ function PoliciesChat({ onClose, onSave, initialPolicy }) {
         conds: [{ id: 1, conj: 'If', field: 'Budget', op: '≥', value: '$10,000' }],
         admins: ['e','d'], requireMode: 'Require any', fallback: 'Auto-approve' } },
   ];
+
+  // Seed wf from a policy being edited, or pre-fill the first template (demo) by default
+  const seedWf = () => {
+    if (initialPolicy?._raw) return { ...initialPolicy._raw };
+    if (initialPolicy) {
+      const trig = TRIGGER_OPTS.find(t => t.t === initialPolicy.trigger)?.id || 'created';
+      return {
+        name: initialPolicy.name || '',
+        desc: initialPolicy.desc || initialPolicy.name || '',
+        trigger: trig,
+        conds: [],
+        admins: [],
+        requireMode: 'Require any',
+        fallback: 'Auto-approve',
+      };
+    }
+    // New (blank) wizard → auto-fill from the demo template
+    return { ...TPLS[0].apply };
+  };
+  const [wf, setWf] = useStateP(seedWf);
+  const [openMenu, setOpenMenu] = useStateP(null);
+  const [open, setOpen] = useStateP({ when: false, match: false, decide: false, fallback: false });
+  // Auto-activate the demo template on fresh open
+  const [activeTemplate, setActiveTemplate] = useStateP(() => initialPolicy ? null : TPLS[0]);
+  const [lastFilledPrompt, setLastFilledPrompt] = useStateP(() => initialPolicy ? '' : (TPLS[0].apply.desc || ''));
+  const [saved, setSaved] = useStateP(false);
+  const nameRef = useRefP(null);
+
+  React.useEffect(() => {
+    const t = setTimeout(() => nameRef.current && nameRef.current.focus(), 50);
+    return () => clearTimeout(t);
+  }, []);
+
+  const set = (patch) => setWf(w => ({ ...w, ...patch }));
+  const toggle = (key) => setOpen(o => ({ ...o, [key]: !o[key] }));
+  const closeAll = () => setOpen({ when: false, match: false, decide: false, fallback: false });
 
   const applyTemplate = (tpl) => {
     setWf(w => ({ ...w, ...tpl.apply }));
