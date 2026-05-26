@@ -15442,7 +15442,7 @@ function App() {
         }
 
         {!mainHidden && <div className="main">
-        {!inChatMode && <Topbar
+        <Topbar
           section={section}
           homeCrumb={homeCrumb}
           onToggleSidebar={() => setCollapsed((c) => !c)}
@@ -15475,7 +15475,7 @@ function App() {
           <button className="btn" style={{ height: 28, fontSize: 12 }}>
               <I.plus size={12} /> New event
             </button> :
-          null} />}
+          null} />
         {!inChatMode && !isHome && (() => {
           const subTabs = adminSection === 'dashboard' ? {
             value: dashboardTab, setValue: setDashboardTab, items: [
